@@ -18,6 +18,7 @@ import { SettingsSection } from '@/components/SettingsSection';
 import { QuickNavLinks } from '@/components/QuickNavLinks';
 import { SyncStatusBadge } from '@/components/SyncStatusBadge';
 import { AppUpdateCard } from '@/components/AppUpdateCard';
+import { ThemeSelector } from '@/components/ThemeSelector';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
@@ -89,7 +90,7 @@ export function ProfileSettingsPage() {
   const [syncLoading, setSyncLoading] = useState(false);
 
   const inputClass =
-    'w-full px-3 py-3 rounded-xl border border-slate-200 text-base focus:outline-none focus:ring-2 focus:ring-teal-500/30 min-h-[48px]';
+    'w-full px-3 py-3 rounded-xl border border-slate-200 bg-white text-slate-800 text-base focus:outline-none focus:ring-2 focus:ring-teal-500/30 min-h-[48px] dark:bg-slate-950 dark:border-slate-800 dark:text-slate-100';
 
   const updateProfileField = <K extends keyof Profile>(
     profileId: string,
@@ -869,6 +870,7 @@ export function ProfileSettingsPage() {
 
       <SettingsSection title="App information">
         <div className="space-y-3">
+          <ThemeSelector />
           <AppUpdateCard />
           <Card className="space-y-2 text-sm text-slate-600">
             <div className="flex justify-between gap-4">

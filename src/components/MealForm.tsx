@@ -77,7 +77,7 @@ export function mealToFormValues(meal: Meal): MealFormValues {
 }
 
 const inputClass =
-  'w-full px-3 py-3 rounded-xl border border-slate-200 bg-white text-base focus:outline-none focus:ring-2 focus:ring-teal-500/30';
+  'w-full px-3 py-3 rounded-xl border border-slate-200 bg-white text-slate-800 text-base focus:outline-none focus:ring-2 focus:ring-teal-500/30 dark:bg-slate-950 dark:border-slate-800 dark:text-slate-100';
 
 export function MealForm({
   initial,

@@ -6,7 +6,7 @@ export function ProfileSwitcher({ className }: { className?: string }) {
 
   if (data.profiles.length <= 1) {
     return activeProfile ? (
-      <span className={cn('text-lg font-semibold text-slate-800', className)}>
+      <span className={cn('text-lg font-semibold text-slate-800 dark:text-slate-100', className)}>
         {activeProfile.name}
       </span>
     ) : null;
@@ -17,7 +17,7 @@ export function ProfileSwitcher({ className }: { className?: string }) {
       value={activeProfile?.id ?? ''}
       onChange={(e) => setActiveProfile(e.target.value)}
       className={cn(
-        'text-lg font-semibold bg-transparent border-none outline-none text-slate-800 cursor-pointer',
+        'text-lg font-semibold bg-transparent border-none outline-none text-slate-800 cursor-pointer dark:text-slate-100',
         className
       )}
     >

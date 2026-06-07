@@ -1,15 +1,16 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import { cn } from '@/utils/helpers';
+import { Icon, type IconName } from './Icon';
 
 const navItems = [
-  { to: '/', label: 'Home', icon: '🏠', match: (path: string) => path === '/' },
-  { to: '/meals', label: 'Meals', icon: '🍽️', match: (path: string) => path.startsWith('/meals') },
-  { to: '/add', label: 'Add', icon: '+', isAdd: true },
-  { to: '/insights', label: 'Insights', icon: '💡', match: (path: string) => path.startsWith('/insights') },
+  { to: '/', label: 'Home', icon: 'home' as IconName, match: (path: string) => path === '/' },
+  { to: '/meals', label: 'Meals', icon: 'meals' as IconName, match: (path: string) => path.startsWith('/meals') },
+  { to: '/add', label: 'Add', icon: 'plus' as IconName, isAdd: true },
+  { to: '/insights', label: 'Insights', icon: 'insights' as IconName, match: (path: string) => path.startsWith('/insights') },
   {
     to: '/profile',
     label: 'Settings',
-    icon: '⚙️',
+    icon: 'settings' as IconName,
     match: (path: string) =>
       path.startsWith('/profile') || path.startsWith('/health') || path.startsWith('/issues'),
   },
@@ -19,7 +20,7 @@ export function BottomNav() {
   const location = useLocation();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur border-t border-slate-200 z-50 pb-[env(safe-area-inset-bottom)]">
+    <nav className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur border-t border-slate-200 z-50 pb-[env(safe-area-inset-bottom)] dark:bg-slate-950/95 dark:border-slate-800">
       <div className="max-w-lg mx-auto flex items-end justify-around px-1 pt-1 pb-1">
         {navItems.map((item) => {
           if (item.isAdd) {
@@ -36,7 +37,7 @@ export function BottomNav() {
                     isActive ? 'bg-teal-600 text-white' : 'bg-teal-500 text-white'
                   )}
                 >
-                  +
+                  <Icon name="plus" className="h-7 w-7" />
                 </span>
               </NavLink>
             );
@@ -52,10 +53,10 @@ export function BottomNav() {
               to={item.to}
               className={cn(
                 'flex flex-col items-center gap-0.5 py-2 px-2 min-w-[52px] min-h-[52px] justify-center rounded-xl transition-colors',
-                isActive ? 'text-teal-500' : 'text-slate-400'
+                isActive ? 'text-teal-500' : 'text-slate-400 dark:text-slate-500'
               )}
             >
-              <span className="text-lg">{item.icon}</span>
+              <Icon name={item.icon} className="h-5 w-5" />
               <span className="text-[10px] font-medium">{item.label}</span>
             </NavLink>
           );

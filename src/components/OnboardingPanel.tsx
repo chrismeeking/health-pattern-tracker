@@ -80,19 +80,19 @@ export function OnboardingPanel() {
   };
 
   const inputClass =
-    'w-full px-3 py-3 rounded-xl border border-slate-200 text-base focus:outline-none focus:ring-2 focus:ring-teal-500/30 min-h-[48px]';
+    'w-full px-3 py-3 rounded-xl border border-slate-200 bg-white text-slate-800 text-base focus:outline-none focus:ring-2 focus:ring-teal-500/30 min-h-[48px] dark:bg-slate-950 dark:border-slate-800 dark:text-slate-100';
 
   return (
     <div className="space-y-4">
-      <Card className="bg-teal-50 border-teal-100 space-y-3">
+      <Card className="bg-teal-50 border-teal-100 space-y-3 dark:bg-teal-500/10 dark:border-teal-500/20">
         <div>
-          <p className="text-xs uppercase tracking-wide text-teal-700 font-semibold">
+          <p className="text-xs uppercase tracking-wide text-teal-700 font-semibold dark:text-teal-200">
             Welcome
           </p>
-          <h1 className="text-xl font-semibold text-teal-950 mt-1">
+          <h1 className="text-xl font-semibold text-teal-950 mt-1 dark:text-teal-50">
             Set up your first profile
           </h1>
-          <p className="text-sm text-teal-800/80 mt-1">
+          <p className="text-sm text-teal-800/80 mt-1 dark:text-teal-100/80">
             Targets and logs are profile-specific, so each person can have their own goals,
             meals, symptoms, and saved foods.
           </p>
@@ -101,7 +101,7 @@ export function OnboardingPanel() {
 
       <Card className="space-y-4">
         <div>
-          <label className="block text-xs text-slate-500 mb-1">Name</label>
+          <label className="block text-xs text-slate-500 mb-1 dark:text-slate-400">Name</label>
           <input
             value={name}
             onChange={(event) => setName(event.target.value)}
@@ -113,7 +113,7 @@ export function OnboardingPanel() {
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs text-slate-500 mb-1">Goal</label>
+            <label className="block text-xs text-slate-500 mb-1 dark:text-slate-400">Goal</label>
             <select
               value={goalType}
               onChange={(event) => setGoalType(event.target.value as GoalType)}
@@ -127,7 +127,7 @@ export function OnboardingPanel() {
             </select>
           </div>
           <div>
-            <label className="block text-xs text-slate-500 mb-1">Activity</label>
+            <label className="block text-xs text-slate-500 mb-1 dark:text-slate-400">Activity</label>
             <select
               value={activityLevel}
               onChange={(event) => setActivityLevel(event.target.value as ActivityLevel)}
@@ -178,7 +178,7 @@ export function OnboardingPanel() {
         </div>
 
         <div>
-          <p className="text-xs text-slate-500 mb-2">Optional modules</p>
+          <p className="text-xs text-slate-500 mb-2 dark:text-slate-400">Optional modules</p>
           <div className="flex flex-wrap gap-2">
             {OPTIONAL_MODULES.map((module) => (
               <button
@@ -187,8 +187,8 @@ export function OnboardingPanel() {
                 onClick={() => toggleModule(module)}
                 className={`px-3 py-2 rounded-xl text-xs min-h-[36px] ${
                   modules.includes(module)
-                    ? 'bg-teal-100 text-teal-700'
-                    : 'bg-slate-100 text-slate-500'
+                    ? 'bg-teal-100 text-teal-700 dark:bg-teal-500/15 dark:text-teal-100'
+                    : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
                 }`}
               >
                 {MODULE_LABELS[module]}
@@ -197,9 +197,9 @@ export function OnboardingPanel() {
           </div>
         </div>
 
-        <div className="rounded-xl bg-slate-50 border border-slate-100 px-3 py-2">
-          <p className="text-xs font-medium text-slate-700">Starting targets</p>
-          <p className="text-[11px] text-slate-500 mt-0.5">
+        <div className="rounded-xl bg-slate-50 border border-slate-100 px-3 py-2 dark:bg-slate-950 dark:border-slate-800">
+          <p className="text-xs font-medium text-slate-700 dark:text-slate-100">Starting targets</p>
+          <p className="text-[11px] text-slate-500 mt-0.5 dark:text-slate-400">
             {suggestedTargets.dailyCalorieTarget} kcal · P {suggestedTargets.proteinTarget}g ·
             C {suggestedTargets.carbTarget}g · F {suggestedTargets.fatTarget}g · Fibre{' '}
             {suggestedTargets.fibreTarget}g
