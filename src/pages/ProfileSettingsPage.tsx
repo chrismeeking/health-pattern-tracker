@@ -3,6 +3,10 @@ import { Link } from 'react-router-dom';
 import { useApp } from '@/hooks/useAppData';
 import { generateId } from '@/services/storage';
 import {
+  getSuggestedNutritionTargets,
+  suggestedTargetsToProfileFields,
+} from '@/utils/nutritionTargets';
+import {
   exportAllDataJson,
   exportDailyCheckInsCsv,
   exportMealsCsv,
@@ -98,18 +102,33 @@ export function ProfileSettingsPage() {
     }));
   };
 
+  const applySuggestedTargets = (profile: Profile, overrides: Partial<Profile> = {}) => {
+    const nextProfile = { ...profile, ...overrides };
+    const targetFields = suggestedTargetsToProfileFields(
+      getSuggestedNutritionTargets(nextProfile)
+    );
+
+    update((d) => ({
+      ...d,
+      profiles: d.profiles.map((p) =>
+        p.id === profile.id ? { ...p, ...overrides, ...targetFields } : p
+      ),
+    }));
+  };
+
   const createProfile = () => {
     if (!newName.trim()) return;
     const id = generateId();
-    const profile: Profile = {
+    const baseProfile: Profile = {
       id,
       name: newName.trim(),
       activityLevel: 'moderate',
       goalType: 'generalHealth',
       enabledModules: ['nutrition', 'weight', 'water', 'goals'],
-      dailyCalorieTarget: 2000,
-      proteinTarget: 100,
-      waterTarget: 2000,
+    };
+    const profile: Profile = {
+      ...baseProfile,
+      ...suggestedTargetsToProfileFields(getSuggestedNutritionTargets(baseProfile)),
     };
     update((d) => ({
       ...d,
@@ -210,6 +229,9 @@ export function ProfileSettingsPage() {
   const storageLabel = isSignedIn
     ? `Local + cloud (${syncMeta.household.name ?? 'household'})`
     : 'Local device only';
+  const suggestedTargets = activeProfile
+    ? getSuggestedNutritionTargets(activeProfile)
+    : null;
 
   return (
     <div className="space-y-6 pb-4">
@@ -372,11 +394,15 @@ export function ProfileSettingsPage() {
               </div>
 
               <div>
-                <label className="block text-xs text-slate-500 mb-1">Goal type</label>
+                <label className="block text-xs text-slate-500 mb-1">
+                  Goal type
+                </label>
                 <select
                   value={activeProfile.goalType}
                   onChange={(e) =>
-                    updateProfileField(activeProfile.id, 'goalType', e.target.value as GoalType)
+                    applySuggestedTargets(activeProfile, {
+                      goalType: e.target.value as GoalType,
+                    })
                   }
                   className={inputClass}
                 >
@@ -386,6 +412,9 @@ export function ProfileSettingsPage() {
                     </option>
                   ))}
                 </select>
+                <p className="text-[10px] text-slate-400 mt-1">
+                  Changing goal type updates nutrition targets automatically.
+                </p>
               </div>
 
               <div>
@@ -443,33 +472,64 @@ export function ProfileSettingsPage() {
       {activeProfile && (
         <SettingsSection
           title="Nutrition targets"
-          description="Daily targets for the active profile."
+          description="Daily targets for the active profile. Goal type sets sensible defaults; you can still edit them manually."
         >
-          <Card className="grid grid-cols-2 gap-3">
-            {[
-              { field: 'dailyCalorieTarget' as const, label: 'Calories (kcal/day)' },
-              { field: 'proteinTarget' as const, label: 'Protein (g/day)' },
-              { field: 'carbTarget' as const, label: 'Carbs (g/day)' },
-              { field: 'fatTarget' as const, label: 'Fat (g/day)' },
-              { field: 'fibreTarget' as const, label: 'Fibre (g/day)' },
-              { field: 'waterTarget' as const, label: 'Water (ml/day)' },
-            ].map(({ field, label }) => (
-              <div key={field}>
-                <label className="block text-xs text-slate-500 mb-1">{label}</label>
-                <input
-                  type="number"
-                  value={activeProfile[field] ?? ''}
-                  onChange={(e) =>
-                    updateProfileField(
-                      activeProfile.id,
-                      field,
-                      e.target.value === '' ? undefined : Number(e.target.value)
-                    )
-                  }
-                  className={inputClass}
-                />
+          <Card className="space-y-4">
+            {suggestedTargets && (
+              <div className="rounded-xl bg-slate-50 border border-slate-100 px-3 py-2.5 space-y-2">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-medium text-slate-700">
+                      Suggested for {GOAL_TYPE_LABELS[activeProfile.goalType]}
+                    </p>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      {suggestedTargets.dailyCalorieTarget} kcal · P{' '}
+                      {suggestedTargets.proteinTarget}g · C {suggestedTargets.carbTarget}g · F{' '}
+                      {suggestedTargets.fatTarget}g · Fibre {suggestedTargets.fibreTarget}g
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => applySuggestedTargets(activeProfile)}
+                    className="shrink-0"
+                  >
+                    Apply
+                  </Button>
+                </div>
+                <p className="text-[10px] text-slate-400">
+                  {suggestedTargets.calorieBasis} {suggestedTargets.macroBasis}
+                </p>
               </div>
-            ))}
+            )}
+
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { field: 'dailyCalorieTarget' as const, label: 'Calories (kcal/day)' },
+                { field: 'proteinTarget' as const, label: 'Protein (g/day)' },
+                { field: 'carbTarget' as const, label: 'Carbs (g/day)' },
+                { field: 'fatTarget' as const, label: 'Fat (g/day)' },
+                { field: 'fibreTarget' as const, label: 'Fibre (g/day)' },
+                { field: 'waterTarget' as const, label: 'Water (ml/day)' },
+              ].map(({ field, label }) => (
+                <div key={field}>
+                  <label className="block text-xs text-slate-500 mb-1">{label}</label>
+                  <input
+                    type="number"
+                    value={activeProfile[field] ?? ''}
+                    onChange={(e) =>
+                      updateProfileField(
+                        activeProfile.id,
+                        field,
+                        e.target.value === '' ? undefined : Number(e.target.value)
+                      )
+                    }
+                    className={inputClass}
+                  />
+                </div>
+              ))}
+            </div>
           </Card>
         </SettingsSection>
       )}
