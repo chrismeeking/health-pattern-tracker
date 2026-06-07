@@ -5,6 +5,10 @@ import { TriggerTagSelector } from './TriggerTagSelector';
 import { Button } from './Button';
 import { RiskCard } from './RiskCard';
 import { MealNameSuggestionPanel } from './MealNameSuggestion';
+import {
+  searchMealDatabaseSuggestions,
+  type SuggestedMealValues,
+} from '@/services/ai/mealNameSuggestion';
 
 export type MealFormValues = {
   mealName: string;
@@ -114,6 +118,22 @@ export function MealForm({
     onSubmit(form);
   };
 
+  const applySuggestionValues = (values: SuggestedMealValues) => {
+    setForm((prev) => {
+      const next = { ...prev, ...values };
+      onValuesChange?.(next);
+      return next;
+    });
+    onSuggestApply?.(values);
+  };
+
+  const databaseMatches =
+    form.mealName.trim().length >= 2
+      ? searchMealDatabaseSuggestions(form.mealName, 3).filter(
+          (suggestion) => suggestion.mealName !== form.mealName
+        )
+      : [];
+
   const chipClass = (selected: boolean) =>
     `px-3 py-2.5 rounded-xl text-sm font-medium min-h-[44px] ${
       selected ? 'bg-teal-500 text-white' : 'bg-slate-100 text-slate-600'
@@ -138,6 +158,25 @@ export function MealForm({
           placeholder="What did you eat?"
           className={inputClass}
         />
+        {databaseMatches.length > 0 && (
+          <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
+            {databaseMatches.map((suggestion) => (
+              <button
+                key={suggestion.mealName}
+                type="button"
+                className="shrink-0 rounded-xl border border-slate-200 bg-white px-3 py-2 text-left shadow-sm min-w-[150px]"
+                onClick={() => applySuggestionValues(suggestion.values)}
+              >
+                <span className="block text-xs font-medium text-slate-700">
+                  {suggestion.mealName}
+                </span>
+                <span className="block text-[10px] text-slate-400 mt-0.5">
+                  {suggestion.values.calories ?? 0} kcal · local database
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
         {profileId && onSuggestApply && (
           <MealNameSuggestionPanel
             profileId={profileId}
@@ -145,14 +184,7 @@ export function MealForm({
             calories={form.calories}
             favourites={favourites}
             recentMeals={recentMeals}
-            onApply={(values) => {
-              setForm((prev) => {
-                const next = { ...prev, ...values };
-                onValuesChange?.(next);
-                return next;
-              });
-              onSuggestApply(values);
-            }}
+            onApply={applySuggestionValues}
           />
         )}
       </div>

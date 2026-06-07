@@ -32,7 +32,9 @@ export function FavouritesPage() {
           <h1 className="text-xl font-semibold text-slate-800">
             {pickMode ? 'Add from favourite' : 'Favourite meals'}
           </h1>
-          <p className="text-sm text-slate-400">Profile-specific — household sharing later</p>
+          <p className="text-sm text-slate-400">
+            Personal favourites for {activeProfile.name}
+          </p>
         </div>
         {!pickMode && (
           <Link to="/favourites/new">

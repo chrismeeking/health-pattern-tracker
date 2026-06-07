@@ -27,9 +27,7 @@ export function SavedFoodsPage() {
   const clearAll = () => {
     update((d) => ({
       ...d,
-      savedFoods: d.savedFoods.filter(
-        (f) => f.profileId && f.profileId !== activeProfile.id
-      ),
+      savedFoods: d.savedFoods.filter((f) => f.profileId !== activeProfile.id),
     }));
     setShowClearAll(false);
   };
@@ -39,7 +37,9 @@ export function SavedFoodsPage() {
       <div className="flex justify-between items-center gap-2">
         <div>
           <h1 className="text-xl font-semibold text-slate-800">Saved foods</h1>
-          <p className="text-sm text-slate-400">Custom barcodes and manual entries</p>
+          <p className="text-sm text-slate-400">
+            Personal and shared barcode foods for {activeProfile.name}
+          </p>
         </div>
         <Link to="/add/meal/scan">
           <Button size="sm" variant="outline">
@@ -67,7 +67,8 @@ export function SavedFoodsPage() {
                   {food.servingSize} · {food.calories} kcal
                 </p>
                 <p className="text-[10px] text-slate-400">
-                  {FOOD_ITEM_SOURCE_LABELS[food.source]}
+                  {FOOD_ITEM_SOURCE_LABELS[food.source]} ·{' '}
+                  {food.profileId ? `Personal to ${activeProfile.name}` : 'Shared household food'}
                 </p>
               </div>
               <Link to={`/add/meal?food=${food.id}`} className="text-sm text-teal-600 shrink-0">
@@ -83,7 +84,7 @@ export function SavedFoodsPage() {
 
       {foods.length > 0 && (
         <Button variant="danger" fullWidth onClick={() => setShowClearAll(true)}>
-          Clear saved foods for this profile
+          Clear personal saved foods for {activeProfile.name}
         </Button>
       )}
 
@@ -104,8 +105,8 @@ export function SavedFoodsPage() {
 
       <ConfirmDialog
         open={showClearAll}
-        title="Clear all saved foods?"
-        message="All custom saved foods for this profile will be removed."
+        title="Clear personal saved foods?"
+        message={`Saved foods personal to ${activeProfile.name} will be removed. Shared household foods stay available.`}
         warning="This cannot be undone."
         confirmLabel="Clear all"
         onConfirm={clearAll}

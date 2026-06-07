@@ -17,6 +17,7 @@ import {
 import { SettingsSection } from '@/components/SettingsSection';
 import { QuickNavLinks } from '@/components/QuickNavLinks';
 import { SyncStatusBadge } from '@/components/SyncStatusBadge';
+import { AppUpdateCard } from '@/components/AppUpdateCard';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
@@ -867,24 +868,27 @@ export function ProfileSettingsPage() {
       </SettingsSection>
 
       <SettingsSection title="App information">
-        <Card className="space-y-2 text-sm text-slate-600">
-          <div className="flex justify-between gap-4">
-            <span className="text-slate-400">App version</span>
-            <span className="font-medium text-slate-800">{APP_VERSION}</span>
-          </div>
-          <div className="flex justify-between gap-4">
-            <span className="text-slate-400">Storage</span>
-            <span className="font-medium text-slate-800 text-right max-w-[60%]">
-              {storageLabel}
-            </span>
-          </div>
-          <div className="flex justify-between gap-4">
-            <span className="text-slate-400">AI status</span>
-            <span className="font-medium text-slate-800 text-right max-w-[60%]">
-              {AI_STATUS_LABEL}
-            </span>
-          </div>
-        </Card>
+        <div className="space-y-3">
+          <AppUpdateCard />
+          <Card className="space-y-2 text-sm text-slate-600">
+            <div className="flex justify-between gap-4">
+              <span className="text-slate-400">App version</span>
+              <span className="font-medium text-slate-800">{APP_VERSION}</span>
+            </div>
+            <div className="flex justify-between gap-4">
+              <span className="text-slate-400">Storage</span>
+              <span className="font-medium text-slate-800 text-right max-w-[60%]">
+                {storageLabel}
+              </span>
+            </div>
+            <div className="flex justify-between gap-4">
+              <span className="text-slate-400">AI status</span>
+              <span className="font-medium text-slate-800 text-right max-w-[60%]">
+                {AI_STATUS_LABEL}
+              </span>
+            </div>
+          </Card>
+        </div>
       </SettingsSection>
 
       <ConfirmDialog

@@ -201,19 +201,35 @@ export function ScanBarcodePage() {
       <p className="text-sm text-slate-500">{getScannerStatusLabel()}</p>
 
       <Card className="space-y-3 overflow-hidden">
-        <video
-          ref={videoRef}
-          className="w-full max-h-48 bg-slate-900 rounded-xl object-cover"
-          playsInline
-          muted
-        />
+        <div className="relative overflow-hidden rounded-xl bg-slate-900">
+          <video
+            ref={videoRef}
+            className="w-full max-h-56 min-h-44 bg-slate-900 object-cover"
+            playsInline
+            muted
+          />
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+            <div className="h-24 w-56 max-w-[80%] rounded-2xl border-2 border-white/80 shadow-[0_0_0_999px_rgba(15,23,42,0.35)]" />
+          </div>
+          <p className="absolute bottom-2 left-0 right-0 text-center text-[11px] text-white/90">
+            {scanning ? 'Hold the barcode inside the box' : 'Camera preview appears while scanning'}
+          </p>
+        </div>
         {caps.cameraAvailable ? (
-          <Button fullWidth variant="secondary" onClick={() => void startCameraScan()} disabled={scanning}>
+          <Button
+            fullWidth
+            variant="secondary"
+            onClick={() => void startCameraScan()}
+            disabled={scanning}
+          >
             {scanning ? 'Scanning…' : 'Scan with camera'}
           </Button>
         ) : (
           <p className="text-xs text-slate-400 text-center">Camera not available — use manual entry.</p>
         )}
+        <p className="text-[11px] text-slate-400 text-center">
+          If scanning struggles, improve lighting or type the numbers below.
+        </p>
       </Card>
 
       <Card className="space-y-3">

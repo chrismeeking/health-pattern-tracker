@@ -35,6 +35,7 @@ import { StatCard } from '@/components/StatCard';
 import { WeeklyProgressCard } from '@/components/WeeklyProgressCard';
 import { QuickNavLinks } from '@/components/QuickNavLinks';
 import { InstallAppPrompt } from '@/components/InstallAppPrompt';
+import { OnboardingPanel } from '@/components/OnboardingPanel';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 
@@ -42,11 +43,7 @@ export function HomePage() {
   const { data, activeProfile, update } = useApp();
 
   if (!activeProfile) {
-    return (
-      <div className="text-center py-12">
-        <p className="text-slate-500">No profile loaded. Check Settings.</p>
-      </div>
-    );
+    return <OnboardingPanel />;
   }
 
   const profileData = getProfileData(data, activeProfile.id);
@@ -112,6 +109,24 @@ export function HomePage() {
       </div>
 
       <InstallAppPrompt />
+
+      <Card className="bg-slate-900 text-white border-slate-900">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-[10px] uppercase tracking-wide text-teal-200 font-semibold">
+              Viewing profile
+            </p>
+            <p className="text-lg font-semibold mt-0.5">{activeProfile.name}</p>
+            <p className="text-xs text-slate-300 mt-1">
+              Goal: {activeProfile.goalType.replace(/([A-Z])/g, ' $1').toLowerCase()} ·
+              Target {activeProfile.dailyCalorieTarget ?? 0} kcal
+            </p>
+          </div>
+          <Link to="/profile" className="text-xs text-teal-200 shrink-0">
+            Switch/edit
+          </Link>
+        </div>
+      </Card>
 
       <section className="space-y-2">
         <h2 className="text-sm font-medium text-slate-600">Quick links</h2>
