@@ -30,6 +30,8 @@ function providerLabel(provider: ParsedMealAnalysis['provider']): string {
       return 'Server mock';
     case 'local-mock':
       return 'Local estimate';
+    case 'local-database':
+      return 'Local database';
     default:
       return 'Estimate';
   }

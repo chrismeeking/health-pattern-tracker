@@ -30,11 +30,11 @@ export interface AnalyseMealResponse {
   triggerTags: string[];
   confidence: MealAnalysisConfidence;
   notes: string;
-  source?: 'openai' | 'mock';
+  source?: 'openai' | 'mock' | 'local-database';
   error?: string;
 }
 
-export type AnalysisProvider = 'openai' | 'server-mock' | 'local-mock';
+export type AnalysisProvider = 'openai' | 'server-mock' | 'local-mock' | 'local-database';
 
 export interface ParsedMealAnalysis extends Omit<AnalyseMealResponse, 'triggerTags' | 'source' | 'error'> {
   triggerTags: TriggerTag[];

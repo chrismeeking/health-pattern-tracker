@@ -152,7 +152,11 @@ function parseBackendResponse(raw: AnalyseMealResponse): ParsedMealAnalysis {
   const tags = parseTriggerTags(raw.triggerTags);
   const ingredientFallback = detectIngredients(raw.mealName);
   const provider: ParsedMealAnalysis['provider'] =
-    raw.source === 'openai' ? 'openai' : 'server-mock';
+    raw.source === 'openai'
+      ? 'openai'
+      : raw.source === 'local-database'
+        ? 'local-database'
+        : 'server-mock';
 
   return {
     mealName: raw.mealName,

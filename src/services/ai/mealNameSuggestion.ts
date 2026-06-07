@@ -1,8 +1,8 @@
-import type { FavouriteMeal, Meal } from '@/types';
+import { ALL_TRIGGER_TAGS, type FavouriteMeal, type Meal, type TriggerTag } from '@/types';
+import { matchUkMeal, type UkMealDatabaseEntry } from '@/data/ukMealDatabase';
 import { analyseMeal } from './mealAnalysisClient';
 import type { ParsedMealAnalysis } from './types';
 import { favouriteToFormValues } from '@/services/food/favouriteMeals';
-import type { TriggerTag } from '@/types';
 
 export interface SuggestedMealValues {
   mealName?: string;
@@ -23,6 +23,7 @@ export interface SuggestedMealValues {
 export type MealNameSuggestionSource =
   | 'local-favourite'
   | 'local-recent'
+  | 'local-database'
   | 'ai-estimate'
   | 'offline-estimate';
 
@@ -34,6 +35,7 @@ export interface MealNameSuggestion {
   ingredients?: string[];
   confidence?: ParsedMealAnalysis['confidence'];
   notes?: string;
+  sourceLabel?: string;
 }
 
 function normaliseName(name: string): string {
@@ -44,6 +46,10 @@ function namesMatch(a: string, b: string): boolean {
   const left = normaliseName(a);
   const right = normaliseName(b);
   return left === right || left.includes(right) || right.includes(left);
+}
+
+function isTriggerTag(tag: string): tag is TriggerTag {
+  return (ALL_TRIGGER_TAGS as readonly string[]).includes(tag);
 }
 
 function mealToSuggestedValues(meal: Meal): SuggestedMealValues {
@@ -93,7 +99,39 @@ function averageMeals(meals: Meal[]): SuggestedMealValues {
   };
 }
 
-/** Check favourites and past logs before calling AI. */
+function databaseEntryToSuggestion(entry: UkMealDatabaseEntry): MealNameSuggestion {
+  const confidence = {
+    calories: entry.confidence,
+    ingredients: entry.confidence,
+    triggerTags: entry.confidence,
+  };
+
+  return {
+    mealName: entry.name,
+    source: 'local-database',
+    label: 'From local UK meal database',
+    values: {
+      mealName: entry.name,
+      source: 'unknown',
+      calories: entry.calories,
+      protein: entry.protein,
+      carbs: entry.carbs,
+      fat: entry.fat,
+      fibre: entry.fibre,
+      sugar: entry.sugar,
+      salt: entry.salt,
+      portionSize: 'normal',
+      triggerTags: entry.triggerTags.filter(isTriggerTag),
+      notes: `Typical ${entry.servingDescription}. Source: ${entry.sourceLabel}. Review before saving.`,
+    },
+    ingredients: entry.ingredients,
+    confidence,
+    notes: `Typical portion from local UK meal database (${entry.sourceLabel}).`,
+    sourceLabel: entry.sourceLabel,
+  };
+}
+
+/** Check favourites, past logs, and the offline database before calling AI. */
 export function findLocalMealNameSuggestion(
   mealName: string,
   favourites: FavouriteMeal[],
@@ -133,6 +171,11 @@ export function findLocalMealNameSuggestion(
         mealType: latest.mealType,
       },
     };
+  }
+
+  const databaseMatch = matchUkMeal(trimmed);
+  if (databaseMatch) {
+    return databaseEntryToSuggestion(databaseMatch);
   }
 
   return null;
