@@ -1,0 +1,62 @@
+@import "tailwindcss";
+
+@theme {
+  --color-teal-50: #f0f9f8;
+  --color-teal-100: #d5f0ec;
+  --color-teal-200: #a8e6cf;
+  --color-teal-500: #2d6a6a;
+  --color-teal-600: #245656;
+  --color-teal-700: #1a4040;
+  --color-sage-100: #e8f0e8;
+  --color-sage-500: #6b8f71;
+  --color-coral-100: #fde8e4;
+  --color-coral-500: #e07a5f;
+  --color-amber-100: #fef3cd;
+  --color-amber-500: #d4a017;
+  --color-slate-50: #f8faf9;
+  --color-slate-100: #eef2f0;
+  --color-slate-200: #d8e0dc;
+  --color-slate-400: #8a9690;
+  --color-slate-600: #4a5650;
+  --color-slate-800: #2a322e;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  scroll-behavior: smooth;
+  overflow-x: hidden;
+}
+
+body {
+  @apply bg-slate-50 text-slate-800 antialiased;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+#root {
+  min-height: 100dvh;
+  overflow-x: hidden;
+}
+
+input,
+select,
+textarea,
+button {
+  font-size: 16px;
+}
+
+.safe-bottom {
+  padding-bottom: calc(5.5rem + env(safe-area-inset-bottom));
+}
+
+.page-stack {
+  @apply space-y-5 w-full max-w-full;
+}
+
+.sticky-form-actions {
+  @apply sticky bottom-0 z-10 bg-slate-50/95 backdrop-blur pt-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] -mx-1 px-1;
+}
