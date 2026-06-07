@@ -154,6 +154,9 @@ export function MealNameSuggestionPanel({
   }
 
   const { values } = suggestion;
+  const confidenceLabel = suggestion.confidence?.calories
+    ? `${capitalise(suggestion.confidence.calories)} confidence`
+    : null;
 
   return (
     <div className="mt-2 rounded-xl border border-teal-100 bg-teal-50/80 px-3 py-2.5 space-y-2">
@@ -163,6 +166,11 @@ export function MealNameSuggestionPanel({
           <p className="text-[11px] text-teal-700/80 mt-0.5">
             Typical portion for “{suggestion.mealName}” — review before applying.
           </p>
+          {(suggestion.sourceLabel || confidenceLabel) && (
+            <p className="text-[10px] text-teal-700/70 mt-1">
+              {[suggestion.sourceLabel, confidenceLabel].filter(Boolean).join(' · ')}
+            </p>
+          )}
         </div>
         <button
           type="button"
@@ -211,4 +219,8 @@ export function MealNameSuggestionPanel({
 
 function normalise(name: string): string {
   return name.trim().toLowerCase();
+}
+
+function capitalise(value: string): string {
+  return value.charAt(0).toUpperCase() + value.slice(1);
 }

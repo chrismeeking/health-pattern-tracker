@@ -496,40 +496,39 @@ function normaliseSearch(text: string): string {
   return text.trim().toLowerCase().replace(/\s+/g, ' ');
 }
 
-/** Best single match for meal name / description text. */
-export function matchUkMeal(text: string): UkMealDatabaseEntry | null {
-  const normalized = normaliseSearch(text);
-  if (!normalized) return null;
-
-  for (const entry of UK_MEAL_DATABASE) {
-    if (entry.patterns.some((pattern) => pattern.test(normalized))) {
-      return entry;
-    }
+function scoreUkMealMatch(entry: UkMealDatabaseEntry, normalized: string): number {
+  const nameLower = normaliseSearch(entry.name);
+  let score = 0;
+  if (nameLower === normalized) score += 100;
+  if (nameLower.includes(normalized) || normalized.includes(nameLower)) score += 50;
+  if (entry.patterns.some((p) => p.test(normalized))) score += 80;
+  for (const word of normalized.split(' ')) {
+    if (word.length >= 3 && nameLower.includes(word)) score += 10;
   }
-
-  return null;
+  return score;
 }
 
-/** Ranked matches for autocomplete-style search. */
-export function searchUkMeals(text: string, limit = 5): UkMealDatabaseEntry[] {
+function getRankedUkMealMatches(text: string): { entry: UkMealDatabaseEntry; score: number }[] {
   const normalized = normaliseSearch(text);
   if (normalized.length < 2) return [];
 
   const scored = UK_MEAL_DATABASE.map((entry) => {
-    const nameLower = entry.name.toLowerCase();
-    let score = 0;
-    if (nameLower === normalized) score += 100;
-    if (nameLower.includes(normalized) || normalized.includes(nameLower)) score += 50;
-    if (entry.patterns.some((p) => p.test(normalized))) score += 80;
-    for (const word of normalized.split(' ')) {
-      if (word.length >= 3 && nameLower.includes(word)) score += 10;
-    }
-    return { entry, score };
+    return { entry, score: scoreUkMealMatch(entry, normalized) };
   })
     .filter(({ score }) => score > 0)
     .sort((a, b) => b.score - a.score);
 
-  return scored.slice(0, limit).map(({ entry }) => entry);
+  return scored;
+}
+
+/** Best ranked match for meal name / description text. */
+export function matchUkMeal(text: string): UkMealDatabaseEntry | null {
+  return getRankedUkMealMatches(text)[0]?.entry ?? null;
+}
+
+/** Ranked matches for autocomplete-style search. */
+export function searchUkMeals(text: string, limit = 5): UkMealDatabaseEntry[] {
+  return getRankedUkMealMatches(text).slice(0, limit).map(({ entry }) => entry);
 }
 
 export function getScaledGenericEstimate(text: string) {

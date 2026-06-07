@@ -1,6 +1,7 @@
 import type { AnalyseMealRequest, AnalyseMealResponse, ConfidenceLevel } from '../types.js';
 import { VALID_TRIGGER_TAGS } from '../types.js';
 import { mockAnalyseMeal, sanitizeTriggerTags } from './mockAnalysis.js';
+import { matchUkMeal } from '../../src/data/ukMealDatabase.js';
 
 const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
 const MODEL = 'gpt-4o-mini';
@@ -110,10 +111,42 @@ function buildUserText(request: AnalyseMealRequest): string {
     .join('\n');
 }
 
+function highConfidenceLocalNameResult(
+  request: AnalyseMealRequest
+): AnalyseMealResponse | null {
+  if (request.analysisType !== 'name') return null;
+
+  const match = matchUkMeal(request.mealText);
+  if (!match || match.confidence !== 'high') return null;
+
+  return {
+    mealName: match.name,
+    estimatedCalories: match.calories,
+    protein: match.protein,
+    carbs: match.carbs,
+    fat: match.fat,
+    fibre: match.fibre,
+    sugar: match.sugar,
+    salt: match.salt,
+    likelyIngredients: match.ingredients,
+    triggerTags: sanitizeTriggerTags(match.triggerTags),
+    confidence: {
+      calories: match.confidence,
+      ingredients: match.confidence,
+      triggerTags: match.confidence,
+    },
+    notes: `Typical portion from local UK meal database (${match.sourceLabel}). Review before saving; portions vary by venue.`,
+    source: 'local-database',
+  };
+}
+
 export async function openaiAnalyseMeal(
   request: AnalyseMealRequest,
   apiKey: string
 ): Promise<AnalyseMealResponse> {
+  const localNameResult = highConfidenceLocalNameResult(request);
+  if (localNameResult) return localNameResult;
+
   const userText = buildUserText(request);
 
   type ContentPart =

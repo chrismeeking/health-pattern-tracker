@@ -351,7 +351,7 @@ export const AI_STATUS_LABEL =
   'Secure backend when API server is running; mock/local fallback otherwise';
 
 export const FOOD_LOOKUP_STATUS_LABEL =
-  'Local UK meal database (25 meals) — works offline; Open Food Facts optional later';
+  'Open Food Facts barcode lookup with saved-food cache; local UK meal database for meal names';
 
 export const APP_VERSION = '0.1.0 MVP';
 

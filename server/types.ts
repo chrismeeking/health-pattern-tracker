@@ -54,5 +54,5 @@ export interface AnalyseMealResponse {
   triggerTags: string[];
   confidence: MealAnalysisConfidence;
   notes: string;
-  source: 'openai' | 'mock';
+  source: 'openai' | 'mock' | 'local-database';
 }

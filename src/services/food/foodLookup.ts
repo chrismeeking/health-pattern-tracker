@@ -1,10 +1,11 @@
 import type { FoodItem, FoodItemSource, TriggerTag } from '@/types';
 import { ALL_TRIGGER_TAGS } from '@/types';
 import { getDatabaseSourceSummary, matchUkMeal, searchUkMeals, type UkMealDatabaseEntry } from '@/data/ukMealDatabase';
+import { fetchOpenFoodFactsBarcode } from './openFoodFacts';
 import { generateId } from '@/services/storage';
 import { nowISO } from '@/utils/helpers';
 
-export type LookupStatus = 'mock-local' | 'offline';
+export type LookupStatus = 'saved' | 'open-food-facts' | 'mock-local' | 'offline';
 
 export interface FoodLookupResult {
   found: boolean;
@@ -111,7 +112,7 @@ export function inferTriggerTags(text: string): TriggerTag[] {
 }
 
 export function getLookupStatusLabel(): string {
-  return getDatabaseSourceSummary();
+  return `Open Food Facts barcode lookup + ${getDatabaseSourceSummary()} for meal names`;
 }
 
 export function lookupMealByName(name: string): FoodLookupResult {
@@ -152,7 +153,7 @@ export function searchMealNames(query: string, limit = 5): UkMealDatabaseEntry[]
 }
 
 export function getLookupStatus(): LookupStatus {
-  return 'mock-local';
+  return 'open-food-facts';
 }
 
 function toFoodItem(
@@ -167,10 +168,11 @@ function toFoodItem(
   };
 }
 
-export function lookupBarcode(
+export async function lookupBarcode(
   barcode: string,
-  savedFoods: FoodItem[]
-): FoodLookupResult {
+  savedFoods: FoodItem[],
+  profileId?: string
+): Promise<FoodLookupResult> {
   const normalized = barcode.trim().replace(/\s/g, '');
   if (!normalized) {
     return { found: false, item: null, status: 'mock-local', message: 'Enter a barcode.' };
@@ -178,23 +180,49 @@ export function lookupBarcode(
 
   const saved = savedFoods.find((f) => f.barcode === normalized);
   if (saved) {
-    return { found: true, item: saved, status: 'mock-local' };
+    return { found: true, item: saved, status: 'saved', message: 'Found in your saved foods.' };
+  }
+
+  let openFoodFactsUnavailable = false;
+  try {
+    const controller = new AbortController();
+    const timeout = globalThis.setTimeout(() => controller.abort(), 7000);
+    try {
+      const openFoodFacts = await fetchOpenFoodFactsBarcode(normalized, controller.signal);
+      if (openFoodFacts.found && openFoodFacts.item) {
+        return {
+          found: true,
+          item: toFoodItem({ ...openFoodFacts.item, profileId }),
+          status: 'open-food-facts',
+          message: openFoodFacts.message,
+        };
+      }
+    } finally {
+      globalThis.clearTimeout(timeout);
+    }
+  } catch {
+    openFoodFactsUnavailable = true;
   }
 
   const mock = MOCK_CATALOG.find((f) => f.barcode === normalized);
   if (mock) {
     return {
       found: true,
-      item: toFoodItem({ ...mock, barcode: normalized }),
+      item: toFoodItem({ ...mock, barcode: normalized, profileId }),
       status: 'mock-local',
+      message: openFoodFactsUnavailable
+        ? 'Open Food Facts unavailable — showing local demo catalog result.'
+        : 'Found in local demo catalog.',
     };
   }
 
   return {
     found: false,
     item: null,
-    status: 'mock-local',
-    message: 'Barcode not found — enter details manually or save as custom food.',
+    status: openFoodFactsUnavailable ? 'offline' : 'open-food-facts',
+    message: openFoodFactsUnavailable
+      ? 'Could not reach Open Food Facts and this barcode is not saved locally — enter details manually or save as custom food.'
+      : 'Barcode not found in Open Food Facts or the local catalog — enter details manually or save as custom food.',
   };
 }
 

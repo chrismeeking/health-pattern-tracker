@@ -18,7 +18,7 @@ import {
   scanBarcodeFromCamera,
 } from '@/services/food/barcodeScanner';
 import { nowISO } from '@/utils/helpers';
-import type { Meal } from '@/types';
+import type { FoodItem, Meal } from '@/types';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 
@@ -29,15 +29,15 @@ export function ScanBarcodePage() {
 
   const [barcode, setBarcode] = useState('');
   const [scanning, setScanning] = useState(false);
+  const [lookupLoading, setLookupLoading] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
   const [lookupMessage, setLookupMessage] = useState<string | null>(null);
-  const [foodItem, setFoodItem] = useState<
-    ReturnType<typeof lookupBarcode>['item']
-  >(null);
+  const [foodItem, setFoodItem] = useState<FoodItem | null>(null);
   const [servingMode, setServingMode] = useState<ServingMode>('default');
   const [servingAmount, setServingAmount] = useState(1);
   const [showManualSave, setShowManualSave] = useState(false);
   const [manualName, setManualName] = useState('');
+  const lookupRequestId = useRef(0);
 
   const caps = getScannerCapabilities();
 
@@ -56,37 +56,87 @@ export function ScanBarcodePage() {
     (f) => !f.profileId || f.profileId === activeProfile.id
   );
 
-  const runLookup = (code: string) => {
+  const cacheLookupResult = (item: FoodItem) => {
+    if (!item.barcode || item.source !== 'openFoodFacts') return;
+
+    update((d) => {
+      const alreadySaved = d.savedFoods.some(
+        (food) =>
+          food.barcode === item.barcode &&
+          (!food.profileId || food.profileId === activeProfile.id)
+      );
+      if (alreadySaved) return d;
+
+      const now = nowISO();
+      return {
+        ...d,
+        savedFoods: [
+          ...d.savedFoods,
+          {
+            ...item,
+            profileId: activeProfile.id,
+            createdAt: item.createdAt || now,
+            updatedAt: now,
+          },
+        ],
+      };
+    });
+  };
+
+  const runLookup = async (code: string) => {
+    const requestId = ++lookupRequestId.current;
     const normalized = normalizeBarcodeInput(code);
     if (!isValidBarcodeFormat(normalized)) {
       setScanError('Enter a valid 8–14 digit barcode.');
       setFoodItem(null);
+      setLookupMessage(null);
+      setShowManualSave(false);
+      setLookupLoading(false);
       return;
     }
     setBarcode(normalized);
     setScanError(null);
-    const result = lookupBarcode(normalized, profileFoods);
-    setLookupMessage(result.message ?? null);
-    setFoodItem(result.item);
-    setShowManualSave(!result.found);
+    setLookupMessage(null);
+    setShowManualSave(false);
     setManualName('');
+    setLookupLoading(true);
+    try {
+      const result = await lookupBarcode(normalized, profileFoods, activeProfile.id);
+      if (requestId !== lookupRequestId.current) return;
+      setLookupMessage(result.message ?? null);
+      setFoodItem(result.item);
+      setShowManualSave(!result.found);
+    } catch {
+      if (requestId !== lookupRequestId.current) return;
+      setFoodItem(null);
+      setLookupMessage('Lookup failed — enter details manually or try again.');
+      setShowManualSave(true);
+    } finally {
+      if (requestId === lookupRequestId.current) setLookupLoading(false);
+    }
   };
 
   const startCameraScan = async () => {
     if (!videoRef.current) return;
     setScanning(true);
     setScanError(null);
-    const result = await scanBarcodeFromCamera(videoRef.current);
-    setScanning(false);
-    if (result.ok && result.barcode) {
-      runLookup(result.barcode);
-    } else {
-      setScanError(result.error ?? 'Scan failed.');
+    try {
+      const result = await scanBarcodeFromCamera(videoRef.current);
+      if (result.ok && result.barcode) {
+        await runLookup(result.barcode);
+      } else {
+        setScanError(result.error ?? 'Scan failed.');
+      }
+    } catch {
+      setScanError('Scanner failed to start. Check camera permissions or use manual entry.');
+    } finally {
+      setScanning(false);
     }
   };
 
   const saveMeal = () => {
     if (!foodItem) return;
+    cacheLookupResult(foodItem);
     const scaled =
       servingMode === 'default'
         ? scaleFoodNutrition(foodItem, 'portions', 1)
@@ -176,8 +226,8 @@ export function ScanBarcodePage() {
           placeholder="e.g. 5000159484695"
           className={inputClass}
         />
-        <Button fullWidth onClick={() => runLookup(barcode)}>
-          Look up food
+        <Button fullWidth onClick={() => void runLookup(barcode)} disabled={lookupLoading}>
+          {lookupLoading ? 'Looking up…' : 'Look up food'}
         </Button>
         <p className="text-[10px] text-slate-400">{getLookupStatusLabel()}</p>
       </Card>
@@ -253,13 +303,14 @@ export function ScanBarcodePage() {
           <Button
             variant="outline"
             fullWidth
-            onClick={() =>
+            onClick={() => {
+              cacheLookupResult(foodItem);
               navigate('/add/meal', {
                 state: {
                   prefilled: foodItemToMealFormValues(foodItem, scaledPreview),
                 },
-              })
-            }
+              });
+            }}
           >
             Edit before saving
           </Button>
