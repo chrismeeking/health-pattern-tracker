@@ -9,5 +9,5 @@
     "outDir": "dist-server",
     "rootDir": "."
   },
-  "include": ["server/**/*.ts", "api/**/*.ts"]
+  "include": ["server/**/*.ts", "api/**/*.ts", "src/data/ukMealDatabase.ts"]
 }

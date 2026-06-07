@@ -11,6 +11,8 @@ const defaultData: AppData = {
   weightEntries: [],
   waterEntries: [],
   goals: [],
+  favouriteMeals: [],
+  savedFoods: [],
   activeProfileId: null,
   demoLoaded: false,
 };
@@ -20,7 +22,12 @@ export function loadData(): AppData {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return { ...defaultData };
     const parsed = JSON.parse(raw) as AppData;
-    return { ...defaultData, ...parsed };
+    return {
+      ...defaultData,
+      ...parsed,
+      favouriteMeals: parsed.favouriteMeals ?? [],
+      savedFoods: parsed.savedFoods ?? [],
+    };
   } catch {
     return { ...defaultData };
   }
@@ -61,6 +68,10 @@ export function getProfileData(data: AppData, profileId: string) {
     weightEntries: data.weightEntries.filter((w) => w.profileId === profileId),
     waterEntries: data.waterEntries.filter((w) => w.profileId === profileId),
     goals: data.goals.filter((g) => g.profileId === profileId),
+    favouriteMeals: data.favouriteMeals.filter((f) => f.profileId === profileId),
+    savedFoods: data.savedFoods.filter(
+      (f) => !f.profileId || f.profileId === profileId
+    ),
   };
 }
 

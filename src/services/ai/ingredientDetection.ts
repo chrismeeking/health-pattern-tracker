@@ -1,5 +1,6 @@
 import type { ConfidenceLevel, TriggerTag } from '@/types';
 import { ALL_TRIGGER_TAGS } from '@/types';
+import { inferDisplayName, matchUkMeal } from '@/data/ukMealDatabase';
 
 export interface IngredientDetectionResult {
   mealName: string;
@@ -7,59 +8,6 @@ export interface IngredientDetectionResult {
   triggerTags: TriggerTag[];
   confidence: ConfidenceLevel;
 }
-
-interface KnownMealPattern {
-  match: (text: string) => boolean;
-  mealName: string;
-  ingredients: string[];
-  tags: TriggerTag[];
-  confidence: ConfidenceLevel;
-}
-
-const KNOWN_PATTERNS: KnownMealPattern[] = [
-  {
-    match: (t) => /pepperoni\s+pizza|pizza.*pepperoni/i.test(t),
-    mealName: 'Pepperoni Pizza',
-    ingredients: [
-      'pizza dough',
-      'tomato sauce',
-      'mozzarella',
-      'pepperoni',
-      'garlic',
-      'onion',
-    ],
-    tags: ['tomato', 'dairy', 'processedMeat', 'fatty', 'garlic', 'onion', 'spicy'],
-    confidence: 'high',
-  },
-  {
-    match: (t) => /thai\s+green\s+curry|green\s+curry.*rice/i.test(t),
-    mealName: 'Thai Green Curry with Rice',
-    ingredients: [
-      'chicken or tofu',
-      'green curry paste',
-      'coconut milk',
-      'jasmine rice',
-      'garlic',
-      'onion',
-      'chilli',
-    ],
-    tags: ['spicy', 'garlic', 'onion', 'coconutMilk', 'chilli'],
-    confidence: 'medium',
-  },
-  {
-    match: (t) => /roast\s+dinner|sunday\s+roast/i.test(t),
-    mealName: 'Roast Dinner',
-    ingredients: [
-      'roast meat',
-      'potatoes',
-      'vegetables',
-      'gravy',
-      'yorkshire pudding',
-    ],
-    tags: ['fatty'],
-    confidence: 'medium',
-  },
-];
 
 const KEYWORD_TAGS: { pattern: RegExp; tag: TriggerTag }[] = [
   { pattern: /tomato|marinara|passata/i, tag: 'tomato' },
@@ -77,21 +25,6 @@ const KEYWORD_TAGS: { pattern: RegExp; tag: TriggerTag }[] = [
   { pattern: /alcohol|beer|wine/i, tag: 'alcohol' },
   { pattern: /coffee|espresso|caffeine/i, tag: 'caffeine' },
 ];
-
-function titleCase(text: string): string {
-  return text
-    .trim()
-    .split(/\s+/)
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
-    .join(' ');
-}
-
-function inferMealName(text: string): string {
-  const trimmed = text.trim();
-  if (!trimmed) return 'Unknown meal';
-  const firstLine = trimmed.split(/[\n.]/)[0]?.trim() ?? trimmed;
-  return titleCase(firstLine.slice(0, 60));
-}
 
 function detectTagsFromText(text: string): TriggerTag[] {
   const tags = new Set<TriggerTag>();
@@ -115,7 +48,7 @@ function parseIngredientList(text: string): string[] {
 
 /**
  * Detect likely ingredients and trigger tags from meal text.
- * Used by mock AI and as a fallback layer for backend responses.
+ * Uses the UK meal database first, then keyword heuristics.
  */
 export function detectIngredients(text: string): IngredientDetectionResult {
   const normalized = text.trim().toLowerCase();
@@ -128,15 +61,14 @@ export function detectIngredients(text: string): IngredientDetectionResult {
     };
   }
 
-  for (const pattern of KNOWN_PATTERNS) {
-    if (pattern.match(normalized)) {
-      return {
-        mealName: pattern.mealName,
-        likelyIngredients: pattern.ingredients,
-        triggerTags: pattern.tags,
-        confidence: pattern.confidence,
-      };
-    }
+  const dbMatch = matchUkMeal(text);
+  if (dbMatch) {
+    return {
+      mealName: dbMatch.name,
+      likelyIngredients: dbMatch.ingredients,
+      triggerTags: dbMatch.triggerTags as TriggerTag[],
+      confidence: dbMatch.confidence,
+    };
   }
 
   const parsedList = parseIngredientList(text);
@@ -151,7 +83,7 @@ export function detectIngredients(text: string): IngredientDetectionResult {
           .slice(0, 6);
 
   return {
-    mealName: inferMealName(text),
+    mealName: inferDisplayName(text),
     likelyIngredients:
       genericIngredients.length > 0 ? genericIngredients : ['mixed ingredients (uncertain)'],
     triggerTags: keywordTags,

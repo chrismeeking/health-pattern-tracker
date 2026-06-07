@@ -3,7 +3,7 @@ import type { AnalyseMealRequest, MealAnalysisType } from '../types.js';
 export const MAX_MEAL_TEXT_LENGTH = 5000;
 export const MAX_IMAGE_BASE64_LENGTH = 5_600_000;
 
-const ANALYSIS_TYPES: MealAnalysisType[] = ['text', 'photo', 'menu', 'packaging'];
+const ANALYSIS_TYPES: MealAnalysisType[] = ['text', 'photo', 'menu', 'packaging', 'name'];
 
 export class RequestValidationError extends Error {
   status = 400;
@@ -52,7 +52,7 @@ export function validateAnalyseMealRequest(body: unknown): AnalyseMealRequest {
     !ANALYSIS_TYPES.includes(record.analysisType as MealAnalysisType)
   ) {
     throw new RequestValidationError(
-      'analysisType must be one of: text, photo, menu, packaging.'
+      'analysisType must be one of: text, photo, menu, packaging, name.'
     );
   }
 

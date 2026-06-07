@@ -1,6 +1,6 @@
 import type { ConfidenceLevel, TriggerTag } from '@/types';
 
-export type MealAnalysisType = 'text' | 'photo' | 'menu' | 'packaging';
+export type MealAnalysisType = 'text' | 'photo' | 'menu' | 'packaging' | 'name';
 
 /** Request body for POST /api/analyse-meal */
 export interface AnalyseMealRequest {

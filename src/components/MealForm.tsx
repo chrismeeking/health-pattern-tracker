@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import type { Meal, MealSource, MealType, PortionSize, TriggerTag } from '@/types';
+import type { FavouriteMeal, Meal, MealSource, MealType, PortionSize, TriggerTag } from '@/types';
 import { MEAL_SOURCE_LABELS, MEAL_TYPE_LABELS, PORTION_SIZE_LABELS } from '@/types';
 import { TriggerTagSelector } from './TriggerTagSelector';
 import { Button } from './Button';
 import { RiskCard } from './RiskCard';
+import { MealNameSuggestionPanel } from './MealNameSuggestion';
 
 export type MealFormValues = {
   mealName: string;
@@ -31,6 +32,10 @@ interface MealFormProps {
   /** When set, merges into the form (e.g. after AI apply). */
   appliedValues?: Partial<MealFormValues> | null;
   showAiEstimateBanner?: boolean;
+  profileId?: string;
+  favourites?: FavouriteMeal[];
+  recentMeals?: Meal[];
+  onSuggestApply?: (values: Partial<MealFormValues>) => void;
 }
 
 const defaults: MealFormValues = {
@@ -79,6 +84,10 @@ export function MealForm({
   riskAssessment,
   appliedValues,
   showAiEstimateBanner,
+  profileId,
+  favourites = [],
+  recentMeals = [],
+  onSuggestApply,
 }: MealFormProps) {
   const [form, setForm] = useState<MealFormValues>({ ...defaults, ...initial });
 
@@ -129,6 +138,23 @@ export function MealForm({
           placeholder="What did you eat?"
           className={inputClass}
         />
+        {profileId && onSuggestApply && (
+          <MealNameSuggestionPanel
+            profileId={profileId}
+            mealName={form.mealName}
+            calories={form.calories}
+            favourites={favourites}
+            recentMeals={recentMeals}
+            onApply={(values) => {
+              setForm((prev) => {
+                const next = { ...prev, ...values };
+                onValuesChange?.(next);
+                return next;
+              });
+              onSuggestApply(values);
+            }}
+          />
+        )}
       </div>
 
       <div>

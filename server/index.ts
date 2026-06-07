@@ -1,19 +1,35 @@
 import 'dotenv/config';
 import cors from 'cors';
 import express from 'express';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   handleAnalyseMealRequest,
   RequestValidationError,
 } from './lib/analyseMealHandler.js';
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const distDir = path.resolve(__dirname, '../dist');
+const isProduction = process.env.NODE_ENV === 'production';
+
 const app = express();
 const PORT = Number(process.env.PORT) || 3001;
 
-app.use(
-  cors({
-    origin: process.env.CORS_ORIGIN?.split(',') ?? ['http://localhost:5173', 'http://127.0.0.1:5173'],
-  })
-);
+const defaultOrigins = isProduction
+  ? []
+  : ['http://localhost:5173', 'http://127.0.0.1:5173'];
+
+const corsOrigins =
+  process.env.CORS_ORIGIN?.split(',').map((origin) => origin.trim()).filter(Boolean) ??
+  defaultOrigins;
+
+if (corsOrigins.length > 0) {
+  app.use(
+    cors({
+      origin: corsOrigins,
+    })
+  );
+}
 
 app.use(express.json({ limit: '6mb' }));
 
@@ -21,6 +37,7 @@ app.get('/api/health', (_req, res) => {
   res.json({
     ok: true,
     openaiConfigured: Boolean(process.env.OPENAI_API_KEY?.trim()),
+    mode: isProduction ? 'production' : 'development',
   });
 });
 
@@ -37,8 +54,23 @@ app.post('/api/analyse-meal', async (req, res) => {
   }
 });
 
+if (isProduction) {
+  app.use(express.static(distDir));
+
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api')) {
+      next();
+      return;
+    }
+    res.sendFile(path.join(distDir, 'index.html'));
+  });
+}
+
 app.listen(PORT, () => {
-  console.log(`API server listening on http://localhost:${PORT}`);
+  console.log(`Server listening on port ${PORT} (${isProduction ? 'production' : 'development'})`);
+  if (isProduction) {
+    console.log(`Serving app from ${distDir}`);
+  }
   console.log(
     `OpenAI: ${process.env.OPENAI_API_KEY?.trim() ? 'configured' : 'not configured (mock responses)'}`
   );

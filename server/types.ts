@@ -1,6 +1,6 @@
 export type ConfidenceLevel = 'low' | 'medium' | 'high';
 
-export type MealAnalysisType = 'text' | 'photo' | 'menu' | 'packaging';
+export type MealAnalysisType = 'text' | 'photo' | 'menu' | 'packaging' | 'name';
 
 export const VALID_TRIGGER_TAGS = [
   'tomato',

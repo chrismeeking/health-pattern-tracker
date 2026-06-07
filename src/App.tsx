@@ -15,6 +15,10 @@ import { IssuesPage } from '@/pages/IssuesPage';
 import { CreateIssuePage, EditIssuePage } from '@/pages/IssueFormPage';
 import { LogSymptomPage } from '@/pages/LogSymptomPage';
 import { DailyCheckInPage } from '@/pages/DailyCheckInPage';
+import { CreateFavouritePage, EditFavouritePage } from '@/pages/FavouriteFormPage';
+import { FavouritesPage } from '@/pages/FavouritesPage';
+import { SavedFoodsPage } from '@/pages/SavedFoodsPage';
+import { ScanBarcodePage } from '@/pages/ScanBarcodePage';
 
 export default function App() {
   return (
@@ -29,6 +33,11 @@ export default function App() {
             <Route path="/issues/:id/edit" element={<EditIssuePage />} />
             <Route path="/add" element={<AddPage />} />
             <Route path="/add/meal" element={<AddMealPage />} />
+            <Route path="/add/meal/scan" element={<ScanBarcodePage />} />
+            <Route path="/favourites" element={<FavouritesPage />} />
+            <Route path="/favourites/new" element={<CreateFavouritePage />} />
+            <Route path="/favourites/:id/edit" element={<EditFavouritePage />} />
+            <Route path="/saved-foods" element={<SavedFoodsPage />} />
             <Route path="/add/weight" element={<AddWeightPage />} />
             <Route path="/add/water" element={<AddWaterPage />} />
             <Route path="/add/symptom" element={<LogSymptomPage />} />

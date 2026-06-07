@@ -10,12 +10,15 @@
     "build": "tsc -b && vite build",
     "build:api": "tsc -p tsconfig.server.json",
     "preview": "vite preview",
+    "start": "tsx server/index.ts",
+    "start:local": "npm run build && tsx server/index.ts",
     "start:api": "tsx server/index.ts"
   },
   "dependencies": {
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
+    "@supabase/supabase-js": "^2.49.8",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-router-dom": "^7.6.2"

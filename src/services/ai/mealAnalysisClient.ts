@@ -30,6 +30,8 @@ function buildAnalysisNotes(
   const parts: string[] = [];
   if (analysisType === 'photo') {
     parts.push('Photo-based local estimate.');
+  } else if (analysisType === 'name') {
+    parts.push('Typical portion estimate from meal name (local).');
   } else if (analysisType === 'menu' || analysisType === 'packaging') {
     parts.push(`Estimated from ${analysisType} text (local).`);
   }

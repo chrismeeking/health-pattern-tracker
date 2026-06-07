@@ -34,6 +34,10 @@ export interface Profile {
   fatTarget?: number;
   fibreTarget?: number;
   waterTarget?: number;
+  /** Cloud sync: household this profile belongs to. */
+  householdId?: string;
+  /** Cloud sync: user who created/owns this profile. */
+  ownerUserId?: string;
 }
 
 export type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack' | 'drink';
@@ -231,6 +235,53 @@ export interface Goal {
   completedAt?: string;
 }
 
+export type FoodItemSource =
+  | 'openFoodFacts'
+  | 'manual'
+  | 'ai'
+  | 'favourite'
+  | 'unknown';
+
+export interface FoodItem {
+  id: string;
+  profileId?: string;
+  barcode?: string;
+  name: string;
+  brand?: string;
+  servingSize: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  fibre: number;
+  sugar: number;
+  salt: number;
+  triggerTags: TriggerTag[];
+  source: FoodItemSource;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface FavouriteMeal {
+  id: string;
+  profileId: string;
+  name: string;
+  mealType: MealType;
+  source: MealSource;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  fibre: number;
+  sugar: number;
+  salt: number;
+  portionSize: PortionSize;
+  triggerTags: TriggerTag[];
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export type ConfidenceLevel = 'low' | 'medium' | 'high';
 export type RiskLevel = 'low' | 'medium' | 'high';
 
@@ -299,6 +350,9 @@ export const MEDICAL_DISCLAIMER =
 export const AI_STATUS_LABEL =
   'Secure backend when API server is running; mock/local fallback otherwise';
 
+export const FOOD_LOOKUP_STATUS_LABEL =
+  'Local UK meal database (25 meals) — works offline; Open Food Facts optional later';
+
 export const APP_VERSION = '0.1.0 MVP';
 
 export interface AppData {
@@ -310,9 +364,19 @@ export interface AppData {
   weightEntries: WeightEntry[];
   waterEntries: WaterEntry[];
   goals: Goal[];
+  favouriteMeals: FavouriteMeal[];
+  savedFoods: FoodItem[];
   activeProfileId: string | null;
   demoLoaded: boolean;
 }
+
+export const FOOD_ITEM_SOURCE_LABELS: Record<FoodItemSource, string> = {
+  openFoodFacts: 'Open Food Facts',
+  manual: 'Manual',
+  ai: 'AI',
+  favourite: 'Favourite',
+  unknown: 'Unknown',
+};
 
 export const MODULE_LABELS: Record<ProfileModule, string> = {
   nutrition: 'Nutrition',

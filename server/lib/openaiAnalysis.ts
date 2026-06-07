@@ -5,6 +5,31 @@ import { mockAnalyseMeal, sanitizeTriggerTags } from './mockAnalysis.js';
 const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
 const MODEL = 'gpt-4o-mini';
 
+const NAME_LOOKUP_PROMPT = `You estimate typical nutrition for a named dish or meal.
+The user typed only a meal name (e.g. "All Day Breakfast", "Chicken Tikka Masala").
+Use your knowledge of common UK/US café, pub, restaurant, and home-cooked portions.
+Base estimates on publicly known average nutrition data — not the user's personal history.
+Rules:
+- Provide cautious estimates with confidence levels (low, medium, high).
+- Do NOT diagnose medical conditions or claim ingredients cause symptoms.
+- triggerTags must ONLY use values from this allowed list: ${VALID_TRIGGER_TAGS.join(', ')}.
+- Return JSON only with this exact shape:
+{
+  "mealName": string,
+  "estimatedCalories": number,
+  "protein": number,
+  "carbs": number,
+  "fat": number,
+  "fibre": number,
+  "sugar": number,
+  "salt": number,
+  "likelyIngredients": string[],
+  "triggerTags": string[],
+  "confidence": { "calories": "low"|"medium"|"high", "ingredients": "low"|"medium"|"high", "triggerTags": "low"|"medium"|"high" },
+  "notes": string
+}
+Notes should say this is a typical average portion estimate, may vary by venue, and is not medical advice.`;
+
 const SYSTEM_PROMPT = `You estimate meal nutrition for a personal food diary app.
 Rules:
 - Provide cautious estimates with confidence levels (low, medium, high).
@@ -65,6 +90,14 @@ function parseOpenAiJson(content: string): Omit<AnalyseMealResponse, 'source'> {
 }
 
 function buildUserText(request: AnalyseMealRequest): string {
+  if (request.analysisType === 'name') {
+    return [
+      'Look up typical average nutrition for this meal name:',
+      `"${request.mealText}"`,
+      'Assume a standard single serving at a typical UK café or restaurant unless the name implies otherwise.',
+    ].join('\n');
+  }
+
   return [
     `Analysis type: ${request.analysisType}`,
     `Profile ID: ${request.profileId}`,
@@ -115,7 +148,10 @@ export async function openaiAnalyseMeal(
       response_format: { type: 'json_object' },
       temperature: 0.3,
       messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
+        {
+          role: 'system',
+          content: request.analysisType === 'name' ? NAME_LOOKUP_PROMPT : SYSTEM_PROMPT,
+        },
         { role: 'user', content: userContent },
       ],
     }),
