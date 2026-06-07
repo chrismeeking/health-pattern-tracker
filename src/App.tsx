@@ -2,8 +2,9 @@ import { useEffect, useMemo, useState } from 'react';
 
 type Faction = 'player' | 'enemy' | 'neutral';
 type BuildingId = 'command' | 'refinery' | 'barracks' | 'warFactory';
-type UnitId = 'infantry' | 'rocket' | 'tank';
+type UnitId = 'infantry' | 'rocket' | 'tank' | 'artillery';
 type Units = Record<UnitId, number>;
+type BuildingLevels = Partial<Record<BuildingId, number>>;
 
 interface RegionDefinition {
   id: string;
@@ -17,6 +18,7 @@ interface RegionDefinition {
 interface RegionState {
   owner: Faction;
   buildings: BuildingId[];
+  buildingLevels: BuildingLevels;
   units: {
     player: Units;
     enemy: Units;
@@ -24,7 +26,7 @@ interface RegionState {
 }
 
 interface GameState {
-  version: 1;
+  version: 2;
   turn: number;
   playerCredits: number;
   enemyCredits: number;
@@ -39,6 +41,8 @@ interface BuildingDefinition {
   shortName: string;
   cost: number;
   income: number;
+  maxLevel: number;
+  upgradeCost: number;
   description: string;
 }
 
@@ -50,14 +54,18 @@ interface UnitDefinition {
   attack: number;
   defense: number;
   requires: BuildingId;
+  role: string;
   description: string;
 }
 
-const SAVE_KEY = 'command-frontier-save-v1';
-const EMPTY_UNITS: Units = { infantry: 0, rocket: 0, tank: 0 };
+const SAVE_KEY = 'command-frontier-save-v2';
+const LEGACY_SAVE_KEY = 'command-frontier-save-v1';
+const TUTORIAL_KEY = 'command-frontier-tutorial-v2-seen';
+const MAX_LOG_ENTRIES = 14;
+const EMPTY_UNITS: Units = { infantry: 0, rocket: 0, tank: 0, artillery: 0 };
 
 const BUILDING_ORDER: BuildingId[] = ['command', 'refinery', 'barracks', 'warFactory'];
-const UNIT_ORDER: UnitId[] = ['infantry', 'rocket', 'tank'];
+const UNIT_ORDER: UnitId[] = ['infantry', 'rocket', 'tank', 'artillery'];
 
 const BUILDINGS: Record<BuildingId, BuildingDefinition> = {
   command: {
@@ -66,6 +74,8 @@ const BUILDINGS: Record<BuildingId, BuildingDefinition> = {
     shortName: 'CC',
     cost: 0,
     income: 2,
+    maxLevel: 3,
+    upgradeCost: 140,
     description: 'The regional HQ. Adds income and anchors control.',
   },
   refinery: {
@@ -74,7 +84,9 @@ const BUILDINGS: Record<BuildingId, BuildingDefinition> = {
     shortName: 'REF',
     cost: 120,
     income: 5,
-    description: 'Harvests resources and greatly improves turn income.',
+    maxLevel: 3,
+    upgradeCost: 110,
+    description: 'Harvests resources. Each level adds more turn income.',
   },
   barracks: {
     id: 'barracks',
@@ -82,6 +94,8 @@ const BUILDINGS: Record<BuildingId, BuildingDefinition> = {
     shortName: 'BAR',
     cost: 150,
     income: 0,
+    maxLevel: 3,
+    upgradeCost: 120,
     description: 'Trains Infantry and Rocket Soldiers in this region.',
   },
   warFactory: {
@@ -90,7 +104,9 @@ const BUILDINGS: Record<BuildingId, BuildingDefinition> = {
     shortName: 'WF',
     cost: 240,
     income: 0,
-    description: 'Builds Tanks for heavy pushes.',
+    maxLevel: 3,
+    upgradeCost: 170,
+    description: 'Builds Tanks and Artillery for heavy pushes.',
   },
 };
 
@@ -103,6 +119,7 @@ const UNITS: Record<UnitId, UnitDefinition> = {
     attack: 2,
     defense: 2,
     requires: 'barracks',
+    role: 'Cheap but weak line troops.',
     description: 'Cheap line troops for holding and probing regions.',
   },
   rocket: {
@@ -113,7 +130,8 @@ const UNITS: Record<UnitId, UnitDefinition> = {
     attack: 4,
     defense: 2,
     requires: 'barracks',
-    description: 'Anti-armour infantry with a useful attack punch.',
+    role: 'Strong against tanks.',
+    description: 'Anti-armour infantry that punch above their weight against tanks.',
   },
   tank: {
     id: 'tank',
@@ -123,7 +141,19 @@ const UNITS: Record<UnitId, UnitDefinition> = {
     attack: 8,
     defense: 6,
     requires: 'warFactory',
-    description: 'Armoured breakthrough unit with high combat value.',
+    role: 'Strong against infantry.',
+    description: 'Armoured breakthrough unit that overruns infantry formations.',
+  },
+  artillery: {
+    id: 'artillery',
+    name: 'Artillery',
+    shortName: 'ART',
+    cost: 145,
+    attack: 11,
+    defense: 2,
+    requires: 'warFactory',
+    role: 'Strong attack, weak defence.',
+    description: 'Long-range firepower with high attack but poor defence if caught.',
   },
 };
 
@@ -172,6 +202,38 @@ function unitPower(units: Units, mode: 'attack' | 'defense') {
   return UNIT_ORDER.reduce((total, unitId) => total + units[unitId] * UNITS[unitId][mode], 0);
 }
 
+function combatPower(units: Units, opposingUnits: Units, mode: 'attack' | 'defense') {
+  const basePower = unitPower(units, mode);
+
+  if (mode === 'defense') {
+    return basePower;
+  }
+
+  const rocketVsTankBonus = Math.min(units.rocket, opposingUnits.tank) * 5;
+  const tankVsInfantryBonus = Math.min(units.tank, opposingUnits.infantry) * 4;
+  const artilleryBarrageBonus = units.artillery * 2;
+
+  return basePower + rocketVsTankBonus + tankVsInfantryBonus + artilleryBarrageBonus;
+}
+
+function getMatchupSummary(attackers: Units, defenders: Units) {
+  const notes = [];
+
+  if (attackers.rocket > 0 && defenders.tank > 0) {
+    notes.push('Rocket Soldiers hit enemy armour hard');
+  }
+
+  if (attackers.tank > 0 && defenders.infantry > 0) {
+    notes.push('Tanks overran infantry screens');
+  }
+
+  if (attackers.artillery > 0) {
+    notes.push('Artillery added heavy opening fire');
+  }
+
+  return notes.length > 0 ? ` ${notes.join('; ')}.` : '';
+}
+
 function formatUnits(units: Units) {
   const entries = UNIT_ORDER.filter((unitId) => units[unitId] > 0).map(
     (unitId) => `${UNITS[unitId].shortName} ${units[unitId]}`
@@ -180,15 +242,58 @@ function formatUnits(units: Units) {
   return entries.length > 0 ? entries.join(' / ') : 'No units';
 }
 
+function createBuildingLevels(buildings: BuildingId[], levels: BuildingLevels = {}) {
+  return buildings.reduce<BuildingLevels>((buildingLevels, buildingId) => {
+    buildingLevels[buildingId] = Math.max(1, Math.min(BUILDINGS[buildingId].maxLevel, levels[buildingId] ?? 1));
+    return buildingLevels;
+  }, {});
+}
+
+function getBuildingLevel(region: RegionState, buildingId: BuildingId) {
+  return region.buildings.includes(buildingId) ? region.buildingLevels[buildingId] ?? 1 : 0;
+}
+
+function getUpgradeCost(buildingId: BuildingId, currentLevel: number) {
+  return BUILDINGS[buildingId].upgradeCost + currentLevel * 45;
+}
+
+function getRecruitCost(region: RegionState, unitId: UnitId) {
+  const unit = UNITS[unitId];
+  const productionLevel = getBuildingLevel(region, unit.requires);
+  const discount = Math.max(0, productionLevel - 1) * 10;
+
+  return Math.max(Math.ceil(unit.cost * 0.7), unit.cost - discount);
+}
+
+function getOwnedRegionIds(state: GameState, faction: Exclude<Faction, 'neutral'>) {
+  return REGIONS.filter((region) => state.regions[region.id].owner === faction).map((region) => region.id);
+}
+
+function getAdjacentEnemyIds(state: GameState, regionId: string, faction: Exclude<Faction, 'neutral'>) {
+  return regionById[regionId].connections.filter((targetId) => {
+    const owner = state.regions[targetId].owner;
+    return owner !== faction && owner !== 'neutral';
+  });
+}
+
+function getEstimatedDefence(state: GameState, regionId: string, defender: Exclude<Faction, 'neutral'>) {
+  const region = state.regions[regionId];
+  const units = region.owner === 'neutral' ? region.units.enemy : region.units[defender];
+
+  return unitPower(units, 'defense') + getBuildingLevel(region, 'command') * 5;
+}
+
 function createRegion(
   owner: Faction,
   buildings: BuildingId[],
   playerUnits: Partial<Units> = {},
-  enemyUnits: Partial<Units> = {}
+  enemyUnits: Partial<Units> = {},
+  buildingLevels: BuildingLevels = {}
 ): RegionState {
   return {
     owner,
     buildings,
+    buildingLevels: createBuildingLevels(buildings, buildingLevels),
     units: {
       player: { ...EMPTY_UNITS, ...playerUnits },
       enemy: { ...EMPTY_UNITS, ...enemyUnits },
@@ -198,24 +303,25 @@ function createRegion(
 
 function createNewGame(): GameState {
   return {
-    version: 1,
+    version: 2,
     turn: 1,
-    playerCredits: 260,
-    enemyCredits: 260,
+    playerCredits: 300,
+    enemyCredits: 300,
     winner: undefined,
     regions: {
-      harbor: createRegion('player', ['command', 'refinery', 'barracks'], { infantry: 6, rocket: 2 }),
+      harbor: createRegion('player', ['command', 'refinery', 'barracks'], { infantry: 6, rocket: 2 }, {}, { refinery: 2 }),
       ridge: createRegion('player', ['command'], { infantry: 3 }),
       delta: createRegion('neutral', [], {}, { infantry: 2 }),
       junction: createRegion('neutral', [], {}, { infantry: 3, rocket: 1 }),
-      foundry: createRegion('enemy', ['command', 'refinery', 'warFactory'], {}, { infantry: 4, tank: 1 }),
+      foundry: createRegion('enemy', ['command', 'refinery', 'warFactory'], {}, { infantry: 4, tank: 1 }, { refinery: 2 }),
       oasis: createRegion('neutral', [], {}, { infantry: 2 }),
       citadel: createRegion('enemy', ['command', 'barracks'], {}, { infantry: 6, rocket: 2 }),
-      relay: createRegion('enemy', ['command'], {}, { infantry: 3 }),
+      relay: createRegion('enemy', ['command'], {}, { infantry: 3, artillery: 1 }),
     },
     log: [
-      'Campaign begins. Capture neutral regions, build your base network, and break the Crimson Hand.',
-      'Tip: build Refineries for income, then Barracks or War Factories to recruit stronger armies.',
+      'V2 campaign begins. Use scouts on the border: enemy rear regions are hidden by fog of war.',
+      'Tip: Infantry are cheap, Rockets counter Tanks, Tanks crush Infantry, and Artillery hits hard but defends poorly.',
+      'Tip: upgrade buildings to improve income, command defence, and production efficiency.',
     ],
   };
 }
@@ -245,8 +351,17 @@ function normalizeUnits(value: unknown) {
   }, emptyUnits());
 }
 
+function normalizeBuildingLevels(buildings: BuildingId[], value: unknown) {
+  const savedLevels = isRecord(value) ? value : {};
+
+  return buildings.reduce<BuildingLevels>((levels, buildingId) => {
+    levels[buildingId] = Math.max(1, Math.min(BUILDINGS[buildingId].maxLevel, readNonNegativeInteger(savedLevels[buildingId], 1)));
+    return levels;
+  }, {});
+}
+
 function normalizeSavedGame(value: unknown): GameState | undefined {
-  if (!isRecord(value) || value.version !== 1 || !isRecord(value.regions)) {
+  if (!isRecord(value) || (value.version !== 1 && value.version !== 2) || !isRecord(value.regions)) {
     return undefined;
   }
 
@@ -269,6 +384,10 @@ function normalizeSavedGame(value: unknown): GameState | undefined {
     regions[regionDefinition.id] = {
       owner: savedRegion.owner,
       buildings: BUILDING_ORDER.filter((buildingId) => savedBuildings.includes(buildingId)),
+      buildingLevels: normalizeBuildingLevels(
+        BUILDING_ORDER.filter((buildingId) => savedBuildings.includes(buildingId)),
+        savedRegion.buildingLevels
+      ),
       units: {
         player: normalizeUnits(savedUnits.player),
         enemy: normalizeUnits(savedUnits.enemy),
@@ -280,7 +399,7 @@ function normalizeSavedGame(value: unknown): GameState | undefined {
   const savedWinner = isFaction(value.winner) && value.winner !== 'neutral' ? value.winner : undefined;
 
   return {
-    version: 1,
+    version: 2,
     turn: Math.max(1, readNonNegativeInteger(value.turn, 1)),
     playerCredits: readNonNegativeInteger(value.playerCredits, 260),
     enemyCredits: readNonNegativeInteger(value.enemyCredits, 260),
@@ -291,7 +410,7 @@ function normalizeSavedGame(value: unknown): GameState | undefined {
 }
 
 function loadGame(): GameState {
-  const saved = localStorage.getItem(SAVE_KEY);
+  const saved = localStorage.getItem(SAVE_KEY) ?? localStorage.getItem(LEGACY_SAVE_KEY);
 
   if (!saved) {
     return createNewGame();
@@ -312,13 +431,16 @@ function getIncome(state: GameState, faction: Exclude<Faction, 'neutral'>) {
       return total;
     }
 
-    const buildingIncome = regionState.buildings.reduce((sum, buildingId) => sum + BUILDINGS[buildingId].income, 0);
+    const buildingIncome = regionState.buildings.reduce(
+      (sum, buildingId) => sum + BUILDINGS[buildingId].income * getBuildingLevel(regionState, buildingId),
+      0
+    );
     return total + region.baseIncome + buildingIncome;
   }, 0);
 }
 
 function addLog(state: GameState, message: string) {
-  state.log = [message, ...state.log].slice(0, 9);
+  state.log = [message, ...state.log].slice(0, MAX_LOG_ENTRIES);
 }
 
 function getWinner(regions: Record<string, RegionState>): Faction | undefined {
@@ -371,9 +493,10 @@ function resolveCombat(
   const target = state.regions[targetRegionId];
   const regionName = regionById[targetRegionId].name;
   const defendingUnits = target.owner === 'neutral' ? target.units.enemy : target.units[defender];
-  const commandBonus = target.buildings.includes('command') ? 4 : 0;
-  const attackScore = unitPower(attackingUnits, 'attack') * (0.9 + Math.random() * 0.25);
+  const commandBonus = getBuildingLevel(target, 'command') * 5;
+  const attackScore = combatPower(attackingUnits, defendingUnits, 'attack') * (0.9 + Math.random() * 0.25);
   const defenseScore = (unitPower(defendingUnits, 'defense') + commandBonus) * (0.9 + Math.random() * 0.25);
+  const matchupSummary = getMatchupSummary(attackingUnits, defendingUnits);
 
   if (attackScore > defenseScore) {
     const survivors = distributeSurvivors(attackingUnits, attackScore - defenseScore * 0.45, 'attack');
@@ -384,11 +507,14 @@ function resolveCombat(
 
     if (!target.buildings.includes('command')) {
       target.buildings = ['command', ...target.buildings];
+      target.buildingLevels.command = 1;
     }
 
     addLog(
       state,
-      `${ownerLabel[attacker]} captured ${regionName} with ${formatUnits(survivors)} remaining.`
+      `${ownerLabel[attacker]} captured ${regionName} (${Math.round(attackScore)} attack vs ${Math.round(
+        defenseScore
+      )} defence) with ${formatUnits(survivors)} remaining.${matchupSummary}`
     );
   } else {
     const survivors = distributeSurvivors(defendingUnits, defenseScore - attackScore * 0.45, 'defense');
@@ -398,7 +524,12 @@ function resolveCombat(
       target.units.enemy = survivors;
     }
 
-    addLog(state, `${ownerLabel[attacker]} attack on ${regionName} was repelled.`);
+    addLog(
+      state,
+      `${ownerLabel[attacker]} attack on ${regionName} was repelled (${Math.round(attackScore)} attack vs ${Math.round(
+        defenseScore
+      )} defence). Defenders left: ${formatUnits(survivors)}.${matchupSummary}`
+    );
   }
 
   state.winner = getWinner(state.regions);
@@ -462,12 +593,58 @@ function chooseEnemyBuild(region: RegionState, credits: number): BuildingId | un
   return priorities.find((buildingId) => !region.buildings.includes(buildingId) && BUILDINGS[buildingId].cost <= credits);
 }
 
+function chooseEnemyUpgrade(region: RegionState, credits: number, defendHere: boolean): BuildingId | undefined {
+  const priorities: BuildingId[] = defendHere ? ['command', 'refinery', 'barracks', 'warFactory'] : ['refinery', 'warFactory', 'barracks', 'command'];
+
+  return priorities.find((buildingId) => {
+    const level = getBuildingLevel(region, buildingId);
+    return level > 0 && level < BUILDINGS[buildingId].maxLevel && getUpgradeCost(buildingId, level) <= credits;
+  });
+}
+
+function recruitEnemyUnits(state: GameState, regionId: string, goal: 'defend' | 'expand' | 'counterattack') {
+  const region = state.regions[regionId];
+  const priorities: Record<typeof goal, UnitId[]> = {
+    defend: ['rocket', 'infantry', 'tank', 'artillery'],
+    expand: ['infantry', 'rocket', 'tank', 'artillery'],
+    counterattack: ['tank', 'rocket', 'artillery', 'infantry'],
+  };
+  let recruited = 0;
+
+  priorities[goal].forEach((unitId) => {
+    const cost = getRecruitCost(region, unitId);
+
+    if (getBuildingLevel(region, UNITS[unitId].requires) > 0 && state.enemyCredits >= cost && recruited < 3) {
+      region.units.enemy[unitId] += 1;
+      state.enemyCredits -= cost;
+      recruited += 1;
+      addLog(state, `AI ${goal}: Crimson Hand recruited ${UNITS[unitId].name} at ${regionById[regionId].name} for ${cost} credits.`);
+    }
+  });
+}
+
 function runEnemyTurn(state: GameState) {
   const income = getIncome(state, 'enemy');
   state.enemyCredits += income;
-  addLog(state, `Crimson Hand collected ${income} credits.`);
+  addLog(state, `Enemy turn ${state.turn}: Crimson Hand collected ${income} credits and evaluated expand, defend, counterattack goals.`);
 
-  const enemyRegionIds = REGIONS.filter((region) => state.regions[region.id].owner === 'enemy').map((region) => region.id);
+  let enemyRegionIds = getOwnedRegionIds(state, 'enemy');
+  const threatenedRegionIds = enemyRegionIds.filter((regionId) => getAdjacentEnemyIds(state, regionId, 'enemy').length > 0);
+
+  threatenedRegionIds.forEach((regionId) => {
+    const region = state.regions[regionId];
+    const upgradeToAdd = chooseEnemyUpgrade(region, state.enemyCredits, true);
+
+    if (upgradeToAdd) {
+      const level = getBuildingLevel(region, upgradeToAdd);
+      const cost = getUpgradeCost(upgradeToAdd, level);
+      region.buildingLevels[upgradeToAdd] = level + 1;
+      state.enemyCredits -= cost;
+      addLog(state, `AI defend: upgraded ${BUILDINGS[upgradeToAdd].name} at ${regionById[regionId].name} to level ${level + 1}.`);
+    }
+
+    recruitEnemyUnits(state, regionId, 'defend');
+  });
 
   enemyRegionIds.forEach((regionId) => {
     const region = state.regions[regionId];
@@ -475,51 +652,44 @@ function runEnemyTurn(state: GameState) {
 
     if (buildingToAdd) {
       region.buildings.push(buildingToAdd);
+      region.buildingLevels[buildingToAdd] = 1;
       state.enemyCredits -= BUILDINGS[buildingToAdd].cost;
-      addLog(state, `Crimson Hand built ${BUILDINGS[buildingToAdd].name} at ${regionById[regionId].name}.`);
+      addLog(state, `AI expand: Crimson Hand built ${BUILDINGS[buildingToAdd].name} at ${regionById[regionId].name}.`);
+      return;
+    }
+
+    const upgradeToAdd = chooseEnemyUpgrade(region, state.enemyCredits, false);
+
+    if (upgradeToAdd) {
+      const level = getBuildingLevel(region, upgradeToAdd);
+      const cost = getUpgradeCost(upgradeToAdd, level);
+      region.buildingLevels[upgradeToAdd] = level + 1;
+      state.enemyCredits -= cost;
+      addLog(state, `AI economy: upgraded ${BUILDINGS[upgradeToAdd].name} at ${regionById[regionId].name} to level ${level + 1}.`);
     }
   });
 
   enemyRegionIds.forEach((regionId) => {
-    const region = state.regions[regionId];
-    const preferredUnits: UnitId[] = region.buildings.includes('warFactory')
-      ? ['tank', 'rocket', 'infantry']
-      : ['rocket', 'infantry'];
-
-    preferredUnits.forEach((unitId) => {
-      const unit = UNITS[unitId];
-
-      if (region.buildings.includes(unit.requires) && state.enemyCredits >= unit.cost) {
-        const amount = Math.min(2, Math.floor(state.enemyCredits / unit.cost));
-        region.units.enemy[unitId] += amount;
-        state.enemyCredits -= amount * unit.cost;
-        addLog(state, `Crimson Hand recruited ${amount} ${unit.name}${amount > 1 ? 's' : ''}.`);
-      }
-    });
+    if (!threatenedRegionIds.includes(regionId)) {
+      recruitEnemyUnits(state, regionId, 'expand');
+    }
   });
 
-  const attackOptions = enemyRegionIds
-    .flatMap((regionId) => {
-      const region = state.regions[regionId];
-      const force = countUnits(region.units.enemy);
+  const counterattackOptions = enemyRegionIds
+    .flatMap((regionId) =>
+      regionById[regionId].connections
+        .filter((targetId) => state.regions[targetId].owner === 'player')
+        .map((targetId) => ({
+          from: regionId,
+          to: targetId,
+          attack: combatPower(state.regions[regionId].units.enemy, state.regions[targetId].units.player, 'attack'),
+          defence: getEstimatedDefence(state, targetId, 'player'),
+        }))
+    )
+    .filter((option) => countUnits(state.regions[option.from].units.enemy) >= 4 && option.attack >= option.defence * 0.9)
+    .sort((left, right) => right.attack - left.attack);
 
-      if (force < 4) {
-        return [];
-      }
-
-      return regionById[regionId].connections
-        .filter((targetId) => state.regions[targetId].owner !== 'enemy')
-        .map((targetId) => ({ from: regionId, to: targetId, force, targetOwner: state.regions[targetId].owner }));
-    })
-    .sort((left, right) => {
-      if (left.targetOwner !== right.targetOwner) {
-        return left.targetOwner === 'player' ? -1 : 1;
-      }
-
-      return right.force - left.force;
-    });
-
-  attackOptions.slice(0, 2).forEach((option) => {
+  counterattackOptions.slice(0, 1).forEach((option) => {
     if (state.winner) {
       return;
     }
@@ -532,6 +702,40 @@ function runEnemyTurn(state: GameState) {
     });
 
     if (countUnits(unitsToMove) > 0) {
+      addLog(state, `AI counterattack: ${regionById[option.from].name} commits forces toward ${regionById[option.to].name}.`);
+      enemyMoveUnits(state, option.from, option.to, unitsToMove);
+    }
+  });
+
+  enemyRegionIds = getOwnedRegionIds(state, 'enemy');
+  const expansionOptions = enemyRegionIds
+    .flatMap((regionId) =>
+      regionById[regionId].connections
+        .filter((targetId) => state.regions[targetId].owner === 'neutral')
+        .map((targetId) => ({
+          from: regionId,
+          to: targetId,
+          force: countUnits(state.regions[regionId].units.enemy),
+          defence: getEstimatedDefence(state, targetId, 'enemy'),
+        }))
+    )
+    .filter((option) => option.force >= 4)
+    .sort((left, right) => right.force - left.force || left.defence - right.defence);
+
+  expansionOptions.slice(0, 1).forEach((option) => {
+    if (state.winner) {
+      return;
+    }
+
+    const sourceUnits = state.regions[option.from].units.enemy;
+    const unitsToMove = emptyUnits();
+
+    UNIT_ORDER.forEach((unitId) => {
+      unitsToMove[unitId] = Math.floor(sourceUnits[unitId] / 2);
+    });
+
+    if (countUnits(unitsToMove) > 0) {
+      addLog(state, `AI expand: Crimson Hand probes neutral ${regionById[option.to].name}.`);
       enemyMoveUnits(state, option.from, option.to, unitsToMove);
     }
   });
@@ -547,11 +751,22 @@ function getFactionCounts(state: GameState) {
   );
 }
 
+function isRegionRevealed(state: GameState, regionId: string) {
+  const region = state.regions[regionId];
+
+  if (region.owner !== 'enemy') {
+    return true;
+  }
+
+  return regionById[regionId].connections.some((connectionId) => state.regions[connectionId].owner === 'player');
+}
+
 function makeDraftFromAvailable(available: Units): Units {
   return {
     infantry: Math.min(2, available.infantry),
     rocket: Math.min(1, available.rocket),
     tank: Math.min(1, available.tank),
+    artillery: Math.min(1, available.artillery),
   };
 }
 
@@ -572,6 +787,7 @@ export default function App() {
   const [selectedRegionId, setSelectedRegionId] = useState('harbor');
   const [destinationId, setDestinationId] = useState<string | undefined>('ridge');
   const [draft, setDraft] = useState<Units>(emptyUnits);
+  const [showTutorial, setShowTutorial] = useState(() => localStorage.getItem(TUTORIAL_KEY) !== 'true');
 
   const selectedRegion = game.regions[selectedRegionId];
   const selectedDefinition = regionById[selectedRegionId];
@@ -581,10 +797,19 @@ export default function App() {
   const enemyIncome = useMemo(() => getIncome(game, 'enemy'), [game]);
   const factionCounts = useMemo(() => getFactionCounts(game), [game]);
   const canMove = selectedRegion.owner === 'player' && countUnits(selectedAvailable) > 0;
-  const selectedVisibleUnits = selectedRegion.owner === 'player' ? selectedRegion.units.player : selectedRegion.units.enemy;
-  const selectedRegionIncome =
-    selectedDefinition.baseIncome +
-    selectedRegion.buildings.reduce((total, buildingId) => total + BUILDINGS[buildingId].income, 0);
+  const selectedRevealed = isRegionRevealed(game, selectedRegionId);
+  const selectedVisibleUnits = !selectedRevealed
+    ? EMPTY_UNITS
+    : selectedRegion.owner === 'player'
+      ? selectedRegion.units.player
+      : selectedRegion.units.enemy;
+  const selectedRegionIncome = !selectedRevealed
+    ? 0
+    : selectedDefinition.baseIncome +
+      selectedRegion.buildings.reduce(
+        (total, buildingId) => total + BUILDINGS[buildingId].income * getBuildingLevel(selectedRegion, buildingId),
+        0
+      );
   const selectedAttackPower = unitPower(selectedVisibleUnits, 'attack');
   const selectedDefensePower = unitPower(selectedVisibleUnits, 'defense');
   const draftTotal = countUnits(draft);
@@ -626,8 +851,30 @@ export default function App() {
       }
 
       region.buildings.push(buildingId);
+      region.buildingLevels[buildingId] = 1;
       next.playerCredits -= building.cost;
       addLog(next, `Built ${building.name} at ${regionById[selectedRegionId].name}.`);
+    });
+  }
+
+  function upgradeBuilding(buildingId: BuildingId) {
+    updateGame((next) => {
+      const region = next.regions[selectedRegionId];
+      const currentLevel = getBuildingLevel(region, buildingId);
+      const cost = getUpgradeCost(buildingId, currentLevel);
+
+      if (
+        region.owner !== 'player' ||
+        currentLevel === 0 ||
+        currentLevel >= BUILDINGS[buildingId].maxLevel ||
+        next.playerCredits < cost
+      ) {
+        return;
+      }
+
+      region.buildingLevels[buildingId] = currentLevel + 1;
+      next.playerCredits -= cost;
+      addLog(next, `Upgraded ${BUILDINGS[buildingId].name} at ${regionById[selectedRegionId].name} to level ${currentLevel + 1}.`);
     });
   }
 
@@ -635,14 +882,15 @@ export default function App() {
     updateGame((next) => {
       const region = next.regions[selectedRegionId];
       const unit = UNITS[unitId];
+      const cost = getRecruitCost(region, unitId);
 
-      if (region.owner !== 'player' || !region.buildings.includes(unit.requires) || next.playerCredits < unit.cost) {
+      if (region.owner !== 'player' || getBuildingLevel(region, unit.requires) === 0 || next.playerCredits < cost) {
         return;
       }
 
       region.units.player[unitId] += 1;
-      next.playerCredits -= unit.cost;
-      addLog(next, `Recruited 1 ${unit.name} at ${regionById[selectedRegionId].name}.`);
+      next.playerCredits -= cost;
+      addLog(next, `Recruited 1 ${unit.name} at ${regionById[selectedRegionId].name} for ${cost} credits.`);
     });
   }
 
@@ -674,6 +922,12 @@ export default function App() {
       next.playerCredits += income;
       addLog(next, `Turn ${next.turn}: Steel Falcons collected ${income} credits.`);
       runEnemyTurn(next);
+      addLog(
+        next,
+        `Turn ${next.turn} complete: Steel Falcons hold ${getFactionCounts(next).player} regions, Crimson Hand holds ${
+          getFactionCounts(next).enemy
+        }.`
+      );
       next.turn += 1;
     });
   }
@@ -686,6 +940,11 @@ export default function App() {
     setDraft(emptyUnits());
   }
 
+  function dismissTutorial() {
+    localStorage.setItem(TUTORIAL_KEY, 'true');
+    setShowTutorial(false);
+  }
+
   return (
     <main className="min-h-dvh bg-[#07101d] text-slate-100">
       <section className="mx-auto flex min-h-dvh w-full max-w-7xl flex-col gap-4 px-3 pb-6 pt-4 sm:px-5 lg:grid lg:grid-cols-[minmax(0,1.35fr)_minmax(24rem,0.8fr)] lg:items-start">
@@ -695,7 +954,7 @@ export default function App() {
               <p className="text-xs font-bold uppercase tracking-[0.3em] text-cyan-300">Command Frontier</p>
               <h1 className="mt-1 text-3xl font-black tracking-tight text-white sm:text-4xl">Theatre Command</h1>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
-                Capture territory, expand production, marshal armies, and end each turn when your battle plan is set.
+                  Version 2: use fog of war, building upgrades, and unit counters to break the Crimson Hand.
               </p>
             </div>
 
@@ -708,13 +967,24 @@ export default function App() {
         </header>
 
         {game.winner ? (
-          <section className="rounded-[1.75rem] border border-yellow-300/40 bg-yellow-300/10 p-4 lg:col-span-2">
-            <h2 className="text-2xl font-black text-yellow-100">
-              {game.winner === 'player' ? 'Victory: the frontier is yours.' : 'Defeat: the Crimson Hand controls the map.'}
-            </h2>
-            <p className="mt-2 text-sm text-yellow-50/80">
-              Start a new campaign to try a different build order or attack route.
+          <section className="rounded-[1.75rem] border border-yellow-300/40 bg-[radial-gradient(circle_at_top_left,rgba(253,224,71,0.24),transparent_32%),#111827] p-5 shadow-2xl shadow-yellow-950/30 lg:col-span-2">
+            <p className="text-xs font-black uppercase tracking-[0.3em] text-yellow-200">
+              {game.winner === 'player' ? 'Victory Screen' : 'Defeat Screen'}
             </p>
+            <h2 className="mt-2 text-3xl font-black text-yellow-100">
+              {game.winner === 'player' ? 'Frontier Secured' : 'Command Network Broken'}
+            </h2>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-yellow-50/80">
+              {game.winner === 'player'
+                ? 'The Crimson Hand has no remaining regions. Your upgrades, counters, and manoeuvres won the campaign.'
+                : 'The Steel Falcons have lost every region. Try using border defence, Rocket counters, and upgraded Refineries earlier.'}
+            </p>
+            <div className="mt-4 grid gap-2 sm:grid-cols-4">
+              <Panel label="Turns" value={game.turn.toString()} />
+              <Panel label="Player Regions" value={factionCounts.player.toString()} />
+              <Panel label="Enemy Regions" value={factionCounts.enemy.toString()} />
+              <Panel label="Army" value={playerArmyTotal.toString()} />
+            </div>
             <button
               className="mt-4 min-h-12 w-full rounded-2xl bg-yellow-300 px-4 py-3 font-black text-slate-950 active:scale-[0.98] sm:w-auto"
               type="button"
@@ -779,9 +1049,10 @@ export default function App() {
                 const regionState = game.regions[region.id];
                 const isSelected = region.id === selectedRegionId;
                 const isConnected = selectedConnections.includes(region.id);
+                const revealed = isRegionRevealed(game, region.id);
                 const visibleUnits =
-                  regionState.owner === 'player' ? regionState.units.player : regionState.units.enemy;
-                const ownerInitial = regionState.owner === 'player' ? 'S' : regionState.owner === 'enemy' ? 'C' : 'N';
+                  !revealed ? EMPTY_UNITS : regionState.owner === 'player' ? regionState.units.player : regionState.units.enemy;
+                const ownerInitial = !revealed ? '?' : regionState.owner === 'player' ? 'S' : regionState.owner === 'enemy' ? 'C' : 'N';
 
                 return (
                   <button
@@ -797,11 +1068,13 @@ export default function App() {
                       {ownerInitial}
                     </span>
                     <span className="text-[0.55rem] font-black uppercase tracking-wide sm:text-[0.63rem]">
-                      {ownerLabel[regionState.owner]}
+                      {!revealed ? 'Fog of War' : ownerLabel[regionState.owner]}
                     </span>
-                    <span className="mt-0.5 text-[0.68rem] font-black leading-tight sm:mt-1 sm:text-sm">{region.name}</span>
+                    <span className="mt-0.5 text-[0.68rem] font-black leading-tight sm:mt-1 sm:text-sm">
+                      {!revealed ? 'Unknown Sector' : region.name}
+                    </span>
                     <span className="mt-1 rounded-full bg-black/10 px-2 py-1 text-xs font-bold">
-                      +{region.baseIncome} / {countUnits(visibleUnits)} units
+                      {!revealed ? '? income / ? units' : `+${region.baseIncome} / ${countUnits(visibleUnits)} units`}
                     </span>
                   </button>
                 );
@@ -889,9 +1162,13 @@ export default function App() {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.24em] text-cyan-300">Region Panel</p>
-                <h2 className="mt-1 text-2xl font-black text-white">{selectedDefinition.name}</h2>
+                <h2 className="mt-1 text-2xl font-black text-white">
+                  {selectedRevealed ? selectedDefinition.name : 'Unknown Enemy Region'}
+                </h2>
                 <p className="mt-1 text-sm text-slate-300">
-                  {ownerLabel[selectedRegion.owner]} control / Total income +{selectedRegionIncome}
+                  {selectedRevealed
+                    ? `${ownerLabel[selectedRegion.owner]} control / Total income +${selectedRegionIncome}`
+                    : 'Enemy rear area hidden by fog of war'}
                 </p>
               </div>
               <span className={`rounded-2xl border px-3 py-2 text-xs font-black ${getOwnerClasses(selectedRegion.owner)}`}>
@@ -900,21 +1177,23 @@ export default function App() {
             </div>
 
             <div className="mt-4 grid grid-cols-3 gap-2">
-              <Panel label="Base" value={`+${selectedDefinition.baseIncome}`} />
-              <Panel label="Buildings" value={selectedRegion.buildings.length.toString()} />
-              <Panel label="Army" value={countUnits(selectedVisibleUnits).toString()} />
+              <Panel label="Base" value={selectedRevealed ? `+${selectedDefinition.baseIncome}` : '?'} />
+              <Panel label="Buildings" value={selectedRevealed ? selectedRegion.buildings.length.toString() : '?'} />
+              <Panel label="Army" value={selectedRevealed ? countUnits(selectedVisibleUnits).toString() : '?'} />
             </div>
 
             <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-900 p-3">
               <h3 className="font-black text-slate-100">Base Structures</h3>
               <div className="mt-2 flex flex-wrap gap-2">
-                {selectedRegion.buildings.length > 0 ? (
+                {!selectedRevealed ? (
+                  <span className="text-sm text-slate-400">Hidden. Move adjacent to reveal enemy buildings.</span>
+                ) : selectedRegion.buildings.length > 0 ? (
                   selectedRegion.buildings.map((buildingId) => (
                     <span
                       key={buildingId}
                       className="rounded-full bg-cyan-300 px-3 py-1.5 text-xs font-black text-slate-950"
                     >
-                      {BUILDINGS[buildingId].name}
+                      {BUILDINGS[buildingId].name} L{getBuildingLevel(selectedRegion, buildingId)}
                     </span>
                   ))
                 ) : (
@@ -925,26 +1204,34 @@ export default function App() {
 
             <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-900 p-3">
               <h3 className="font-black text-slate-100">Local Garrison</h3>
-              <div className="mt-2 grid grid-cols-2 gap-2">
-                {UNIT_ORDER.map((unitId) => {
-                  return (
-                    <div key={unitId} className="rounded-xl bg-slate-950 px-3 py-2">
-                      <p className="text-xs font-bold text-slate-400">{UNITS[unitId].shortName}</p>
-                      <p className="text-lg font-black">{selectedVisibleUnits[unitId]}</p>
+              {!selectedRevealed ? (
+                <p className="mt-2 rounded-2xl bg-slate-950 px-3 py-3 text-sm text-slate-400">
+                  Enemy force composition is concealed until you border this region.
+                </p>
+              ) : (
+                <>
+                  <div className="mt-2 grid grid-cols-2 gap-2">
+                    {UNIT_ORDER.map((unitId) => {
+                      return (
+                        <div key={unitId} className="rounded-xl bg-slate-950 px-3 py-2">
+                          <p className="text-xs font-bold text-slate-400">{UNITS[unitId].shortName}</p>
+                          <p className="text-lg font-black">{selectedVisibleUnits[unitId]}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                    <div className="rounded-xl bg-slate-950 px-3 py-2">
+                      <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Attack</p>
+                      <p className="text-lg font-black text-red-300">{selectedAttackPower}</p>
                     </div>
-                  );
-                })}
-              </div>
-              <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
-                <div className="rounded-xl bg-slate-950 px-3 py-2">
-                  <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Attack</p>
-                  <p className="text-lg font-black text-red-300">{selectedAttackPower}</p>
-                </div>
-                <div className="rounded-xl bg-slate-950 px-3 py-2">
-                  <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Defence</p>
-                  <p className="text-lg font-black text-cyan-300">{selectedDefensePower}</p>
-                </div>
-              </div>
+                    <div className="rounded-xl bg-slate-950 px-3 py-2">
+                      <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Defence</p>
+                      <p className="text-lg font-black text-cyan-300">{selectedDefensePower}</p>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </section>
 
@@ -963,8 +1250,9 @@ export default function App() {
               <div className="mt-3 grid gap-2">
               {UNIT_ORDER.map((unitId) => {
                 const unit = UNITS[unitId];
-                const unlocked = selectedRegion.buildings.includes(unit.requires);
-                const disabled = selectedRegion.owner !== 'player' || !unlocked || game.playerCredits < unit.cost || Boolean(game.winner);
+                const unlocked = getBuildingLevel(selectedRegion, unit.requires) > 0;
+                const cost = getRecruitCost(selectedRegion, unitId);
+                const disabled = selectedRegion.owner !== 'player' || !unlocked || game.playerCredits < cost || Boolean(game.winner);
 
                 return (
                   <button
@@ -979,11 +1267,11 @@ export default function App() {
                         {unit.shortName} {unit.name}
                       </span>
                       <span className="rounded-full bg-emerald-300 px-2 py-1 text-xs font-black text-slate-950">
-                        {unit.cost}c
+                        {cost}c
                       </span>
                     </span>
                     <span className="mt-1 block text-xs leading-5 text-slate-400">
-                      ATK {unit.attack} / DEF {unit.defense}. Needs {BUILDINGS[unit.requires].shortName}. {unit.description}
+                      ATK {unit.attack} / DEF {unit.defense}. {unit.role} Needs {BUILDINGS[unit.requires].shortName}. {unit.description}
                     </span>
                   </button>
                 );
@@ -1080,25 +1368,40 @@ export default function App() {
             <h2 className="mt-1 text-xl font-black">Build Base</h2>
             <p className="mt-1 text-sm text-slate-400">Buildings are regional, so place production where you need units.</p>
             <div className="mt-3 grid gap-2">
-              {BUILDING_ORDER.filter((buildingId) => buildingId !== 'command').map((buildingId) => {
+              {BUILDING_ORDER.map((buildingId) => {
                 const building = BUILDINGS[buildingId];
-                const owned = selectedRegion.buildings.includes(buildingId);
-                const disabled = selectedRegion.owner !== 'player' || owned || game.playerCredits < building.cost || Boolean(game.winner);
+                const level = getBuildingLevel(selectedRegion, buildingId);
+
+                if (buildingId === 'command' && level === 0) {
+                  return null;
+                }
+
+                const owned = level > 0;
+                const canUpgrade = owned && level < building.maxLevel;
+                const actionCost = owned ? getUpgradeCost(buildingId, level) : building.cost;
+                const disabled =
+                  selectedRegion.owner !== 'player' ||
+                  (buildingId === 'command' && !owned) ||
+                  !selectedRevealed ||
+                  (!canUpgrade && owned) ||
+                  game.playerCredits < actionCost ||
+                  Boolean(game.winner);
 
                 return (
                   <button
                     key={buildingId}
                     type="button"
                     disabled={disabled}
-                    onClick={() => build(buildingId)}
+                    onClick={() => (owned ? upgradeBuilding(buildingId) : build(buildingId))}
                     className="min-h-16 rounded-2xl border border-slate-700 bg-slate-900 px-3 py-3 text-left transition enabled:hover:border-cyan-300/50 enabled:active:scale-[0.98] disabled:opacity-45"
                   >
                     <span className="flex items-center justify-between gap-2">
                       <span className="font-black">
                         {building.shortName} {building.name}
+                        {owned ? ` L${level}` : ''}
                       </span>
                       <span className="rounded-full bg-cyan-300 px-2 py-1 text-xs font-black text-slate-950">
-                        {owned ? 'Built' : `${building.cost}c`}
+                        {owned ? (canUpgrade ? `Upgrade ${actionCost}c` : 'Max') : `${actionCost}c`}
                       </span>
                     </span>
                     <span className="mt-1 block text-xs leading-5 text-slate-400">{building.description}</span>
@@ -1109,6 +1412,29 @@ export default function App() {
           </section>
         </aside>
       </section>
+
+      {showTutorial ? (
+        <div className="fixed inset-0 z-50 flex items-end bg-slate-950/80 p-3 backdrop-blur sm:items-center sm:justify-center">
+          <section className="w-full max-w-lg rounded-[1.75rem] border border-cyan-300/30 bg-slate-950 p-5 shadow-2xl shadow-cyan-950/50">
+            <p className="text-xs font-black uppercase tracking-[0.3em] text-cyan-300">Tutorial</p>
+            <h2 className="mt-2 text-2xl font-black text-white">How to command the frontier</h2>
+            <div className="mt-4 space-y-3 text-sm leading-6 text-slate-300">
+              <p><span className="font-black text-cyan-200">1.</span> Tap map regions to inspect them. Enemy rear regions are hidden by fog until you border them.</p>
+              <p><span className="font-black text-cyan-200">2.</span> End turns to collect income. Build and upgrade Refineries for more credits.</p>
+              <p><span className="font-black text-cyan-200">3.</span> Recruit counters: Infantry are cheap, Rockets punish Tanks, Tanks crush Infantry, and Artillery attacks hard but defends poorly.</p>
+              <p><span className="font-black text-cyan-200">4.</span> Move task forces only between connected regions. Entering hostile territory auto-resolves the battle.</p>
+              <p><span className="font-black text-cyan-200">5.</span> Watch the event log: the enemy AI now declares when it expands, defends, or counterattacks.</p>
+            </div>
+            <button
+              type="button"
+              onClick={dismissTutorial}
+              className="mt-5 min-h-14 w-full rounded-2xl bg-cyan-300 px-4 py-3 text-lg font-black text-slate-950 active:scale-[0.98]"
+            >
+              Start Command
+            </button>
+          </section>
+        </div>
+      ) : null}
     </main>
   );
 }
