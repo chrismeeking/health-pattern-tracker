@@ -581,6 +581,16 @@ export default function App() {
   const enemyIncome = useMemo(() => getIncome(game, 'enemy'), [game]);
   const factionCounts = useMemo(() => getFactionCounts(game), [game]);
   const canMove = selectedRegion.owner === 'player' && countUnits(selectedAvailable) > 0;
+  const selectedVisibleUnits = selectedRegion.owner === 'player' ? selectedRegion.units.player : selectedRegion.units.enemy;
+  const selectedRegionIncome =
+    selectedDefinition.baseIncome +
+    selectedRegion.buildings.reduce((total, buildingId) => total + BUILDINGS[buildingId].income, 0);
+  const selectedAttackPower = unitPower(selectedVisibleUnits, 'attack');
+  const selectedDefensePower = unitPower(selectedVisibleUnits, 'defense');
+  const draftTotal = countUnits(draft);
+  const destinationDefinition = destinationId ? regionById[destinationId] : undefined;
+  const destinationState = destinationId ? game.regions[destinationId] : undefined;
+  const playerArmyTotal = REGIONS.reduce((total, region) => total + countUnits(game.regions[region.id].units.player), 0);
 
   useEffect(() => {
     localStorage.setItem(SAVE_KEY, JSON.stringify(game));
@@ -677,23 +687,22 @@ export default function App() {
   }
 
   return (
-    <main className="min-h-dvh bg-[#09111f] text-slate-100">
-      <section className="mx-auto flex min-h-dvh w-full max-w-6xl flex-col gap-4 px-3 pb-6 pt-4 sm:px-5 lg:grid lg:grid-cols-[1.3fr_0.9fr] lg:items-start">
-        <header className="rounded-[1.75rem] border border-cyan-300/20 bg-slate-900/95 p-4 shadow-2xl shadow-cyan-950/30 lg:col-span-2">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <main className="min-h-dvh bg-[#07101d] text-slate-100">
+      <section className="mx-auto flex min-h-dvh w-full max-w-7xl flex-col gap-4 px-3 pb-6 pt-4 sm:px-5 lg:grid lg:grid-cols-[minmax(0,1.35fr)_minmax(24rem,0.8fr)] lg:items-start">
+        <header className="rounded-[1.75rem] border border-cyan-300/25 bg-slate-950/90 p-4 shadow-2xl shadow-cyan-950/40 lg:col-span-2">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.3em] text-cyan-300">Command Frontier</p>
-              <h1 className="mt-1 text-3xl font-black tracking-tight text-white sm:text-4xl">Mobile Strategy War Room</h1>
+              <h1 className="mt-1 text-3xl font-black tracking-tight text-white sm:text-4xl">Theatre Command</h1>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
-                Turn-based campaign control meets base building: capture regions, construct production, raise armies,
-                and outmaneuver the Crimson Hand.
+                Capture territory, expand production, marshal armies, and end each turn when your battle plan is set.
               </p>
             </div>
 
-            <div className="grid grid-cols-3 gap-2 text-center sm:min-w-[23rem]">
-              <Stat label="Turn" value={game.turn.toString()} />
-              <Stat label="Credits" value={game.playerCredits.toString()} tone="cyan" />
-              <Stat label="Income" value={`+${playerIncome}`} tone="green" />
+            <div className="grid grid-cols-3 gap-2 text-center lg:min-w-[27rem]">
+              <Stat label="Turn" value={game.turn.toString()} detail="Campaign phase" />
+              <Stat label="Credits" value={game.playerCredits.toString()} detail="Treasury" tone="cyan" />
+              <Stat label="Income" value={`+${playerIncome}`} detail="Next turn" tone="green" />
             </div>
           </div>
         </header>
@@ -717,27 +726,39 @@ export default function App() {
         ) : null}
 
         <section className="space-y-4">
-          <div className="rounded-[1.75rem] border border-slate-700 bg-slate-900 p-4">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <h2 className="text-xl font-black">Campaign Map</h2>
-                <p className="text-sm text-slate-400">Tap a region node to inspect, build, recruit, or launch moves.</p>
-              </div>
-              <div className="rounded-2xl bg-slate-800 px-3 py-2 text-right text-xs text-slate-300">
-                <div>Enemy income +{enemyIncome}</div>
+          <div className="overflow-hidden rounded-[1.75rem] border border-cyan-300/20 bg-slate-950 shadow-2xl shadow-slate-950/60">
+            <div className="border-b border-slate-800 bg-slate-900/80 p-4">
+              <div className="flex items-center justify-between gap-3">
                 <div>
-                  P {factionCounts.player} / N {factionCounts.neutral} / E {factionCounts.enemy}
+                  <p className="text-xs font-black uppercase tracking-[0.24em] text-cyan-300">Strategic Map</p>
+                  <h2 className="mt-1 text-xl font-black">8-Region Campaign Theatre</h2>
+                  <p className="text-sm text-slate-400">Tap a region node to inspect its economy, buildings, and forces.</p>
+                </div>
+                <div className="rounded-2xl border border-slate-700 bg-slate-950 px-3 py-2 text-right text-xs text-slate-300">
+                  <div>Enemy income <span className="font-black text-red-300">+{enemyIncome}</span></div>
+                  <div>
+                    P <span className="font-black text-cyan-300">{factionCounts.player}</span> / N{' '}
+                    <span className="font-black text-amber-300">{factionCounts.neutral}</span> / E{' '}
+                    <span className="font-black text-red-300">{factionCounts.enemy}</span>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div className="relative mt-4 aspect-[1.02] min-h-[360px] overflow-hidden rounded-[1.5rem] border border-slate-700 bg-[radial-gradient(circle_at_top_left,#164e63,transparent_38%),linear-gradient(145deg,#0f172a,#111827)] sm:aspect-[1.75]">
+            <div className="relative aspect-[1.02] min-h-[380px] overflow-hidden bg-[linear-gradient(rgba(148,163,184,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,0.08)_1px,transparent_1px),radial-gradient(circle_at_top_left,#155e75,transparent_38%),linear-gradient(145deg,#0f172a,#111827)] bg-[length:28px_28px,28px_28px,auto,auto] sm:aspect-[1.75]">
+              <div className="pointer-events-none absolute inset-x-4 top-4 z-10 flex justify-between gap-2 text-[0.65rem] font-black uppercase tracking-[0.22em] text-slate-400">
+                <span>Western Front</span>
+                <span>Enemy Zone</span>
+              </div>
+
               <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
                 {REGIONS.flatMap((region) =>
                   region.connections
                     .filter((targetId) => region.id < targetId)
                     .map((targetId) => {
                       const target = regionById[targetId];
+                      const highlighted = region.id === selectedRegionId || targetId === selectedRegionId;
+
                       return (
                         <line
                           key={`${region.id}-${targetId}`}
@@ -745,8 +766,8 @@ export default function App() {
                           y1={region.y}
                           x2={target.x}
                           y2={target.y}
-                          stroke="rgba(148, 163, 184, 0.38)"
-                          strokeWidth="1.4"
+                          stroke={highlighted ? 'rgba(103, 232, 249, 0.78)' : 'rgba(148, 163, 184, 0.32)'}
+                          strokeWidth={highlighted ? '2.2' : '1.2'}
                           strokeLinecap="round"
                         />
                       );
@@ -757,8 +778,10 @@ export default function App() {
               {REGIONS.map((region) => {
                 const regionState = game.regions[region.id];
                 const isSelected = region.id === selectedRegionId;
+                const isConnected = selectedConnections.includes(region.id);
                 const visibleUnits =
                   regionState.owner === 'player' ? regionState.units.player : regionState.units.enemy;
+                const ownerInitial = regionState.owner === 'player' ? 'S' : regionState.owner === 'enemy' ? 'C' : 'N';
 
                 return (
                   <button
@@ -766,10 +789,13 @@ export default function App() {
                     type="button"
                     onClick={() => setSelectedRegionId(region.id)}
                     className={`absolute flex min-h-20 w-20 -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center rounded-2xl border-2 p-1.5 text-center shadow-xl transition active:scale-95 sm:min-h-24 sm:w-32 sm:rounded-3xl sm:p-2 ${
-                      isSelected ? 'ring-4 ring-white/80' : ''
+                      isSelected ? 'z-20 ring-4 ring-white/80' : isConnected ? 'z-10 ring-2 ring-cyan-200/35' : ''
                     } ${getOwnerClasses(regionState.owner)}`}
                     style={{ left: `${region.x}%`, top: `${region.y}%` }}
                   >
+                    <span className="mb-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-black/15 text-xs font-black sm:h-8 sm:w-8">
+                      {ownerInitial}
+                    </span>
                     <span className="text-[0.55rem] font-black uppercase tracking-wide sm:text-[0.63rem]">
                       {ownerLabel[regionState.owner]}
                     </span>
@@ -780,20 +806,47 @@ export default function App() {
                   </button>
                 );
               })}
+
+              <div className="absolute inset-x-3 bottom-3 grid grid-cols-3 gap-2 text-center text-[0.65rem] font-black uppercase tracking-wide sm:max-w-lg">
+                <div className="rounded-xl border border-cyan-300/40 bg-cyan-300/15 px-2 py-2 text-cyan-100">
+                  Player army {playerArmyTotal}
+                </div>
+                <div className="rounded-xl border border-slate-500/40 bg-slate-950/70 px-2 py-2 text-slate-200">
+                  Selected {selectedDefinition.name}
+                </div>
+                <div className="rounded-xl border border-red-300/40 bg-red-300/15 px-2 py-2 text-red-100">
+                  Enemy regions {factionCounts.enemy}
+                </div>
+              </div>
             </div>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-3">
-            <LegendCard label="Steel Falcons" detail="Your faction" className="border-cyan-300 bg-cyan-100 text-cyan-950" />
+            <LegendCard label="Steel Falcons" detail="Player command" className="border-cyan-300 bg-cyan-100 text-cyan-950" />
             <LegendCard label="Neutral militia" detail="Capture for income" className="border-amber-300 bg-amber-100 text-amber-950" />
             <LegendCard label="Crimson Hand" detail="AI opponent" className="border-red-300 bg-red-100 text-red-950" />
           </div>
 
-          <section className="rounded-[1.75rem] border border-slate-700 bg-slate-900 p-4">
-            <h2 className="text-xl font-black">Command Log</h2>
-            <div className="mt-3 space-y-2">
+          <section className="rounded-[1.75rem] border border-slate-700 bg-slate-950 p-4 shadow-xl shadow-slate-950/40">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.24em] text-emerald-300">Event Log</p>
+                <h2 className="mt-1 text-xl font-black">Operations Feed</h2>
+              </div>
+              <span className="rounded-full bg-slate-800 px-3 py-1.5 text-xs font-black text-slate-300">
+                Latest first
+              </span>
+            </div>
+            <div className="mt-3 max-h-72 space-y-2 overflow-y-auto pr-1">
               {game.log.map((entry, index) => (
-                <p key={`${entry}-${index}`} className="rounded-2xl bg-slate-800 px-3 py-2 text-sm leading-5 text-slate-200">
+                <p
+                  key={`${entry}-${index}`}
+                  className={`rounded-2xl border px-3 py-2 text-sm leading-5 ${
+                    index === 0
+                      ? 'border-emerald-300/35 bg-emerald-300/10 text-emerald-50'
+                      : 'border-slate-800 bg-slate-900 text-slate-200'
+                  }`}
+                >
                   {entry}
                 </p>
               ))}
@@ -802,13 +855,43 @@ export default function App() {
         </section>
 
         <aside className="space-y-4 lg:sticky lg:top-4">
-          <section className="rounded-[1.75rem] border border-slate-700 bg-slate-900 p-4">
+          <section className="rounded-[1.75rem] border border-emerald-300/25 bg-slate-950 p-4 shadow-2xl shadow-emerald-950/20">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.24em] text-emerald-300">Turn Control</p>
+                <h2 className="mt-1 text-xl font-black">Ready Orders</h2>
+                <p className="mt-1 text-sm text-slate-400">End the turn to collect income and let the AI respond.</p>
+              </div>
+              <div className="rounded-2xl bg-slate-900 px-3 py-2 text-right text-xs text-slate-300">
+                <div>Next income</div>
+                <div className="text-lg font-black text-emerald-300">+{playerIncome}</div>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={endTurn}
+              disabled={Boolean(game.winner)}
+              className="mt-4 min-h-16 w-full rounded-[1.25rem] bg-emerald-300 px-4 py-3 text-xl font-black text-slate-950 shadow-lg shadow-emerald-950/30 active:scale-[0.98] disabled:opacity-40"
+            >
+              End Turn {game.turn}
+            </button>
+            <button
+              type="button"
+              onClick={resetGame}
+              className="mt-3 min-h-12 w-full rounded-[1.1rem] border border-slate-600 bg-slate-900 px-4 py-3 font-black text-white active:scale-[0.98]"
+            >
+              New Campaign
+            </button>
+          </section>
+
+          <section className="rounded-[1.75rem] border border-cyan-300/20 bg-slate-950 p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate-400">Selected Region</p>
+                <p className="text-xs font-black uppercase tracking-[0.24em] text-cyan-300">Region Panel</p>
                 <h2 className="mt-1 text-2xl font-black text-white">{selectedDefinition.name}</h2>
                 <p className="mt-1 text-sm text-slate-300">
-                  {ownerLabel[selectedRegion.owner]} control / Base income +{selectedDefinition.baseIncome}
+                  {ownerLabel[selectedRegion.owner]} control / Total income +{selectedRegionIncome}
                 </p>
               </div>
               <span className={`rounded-2xl border px-3 py-2 text-xs font-black ${getOwnerClasses(selectedRegion.owner)}`}>
@@ -816,18 +899,14 @@ export default function App() {
               </span>
             </div>
 
-            <div className="mt-4 grid grid-cols-2 gap-3">
+            <div className="mt-4 grid grid-cols-3 gap-2">
+              <Panel label="Base" value={`+${selectedDefinition.baseIncome}`} />
               <Panel label="Buildings" value={selectedRegion.buildings.length.toString()} />
-              <Panel
-                label="Army"
-                value={countUnits(
-                  selectedRegion.owner === 'player' ? selectedRegion.units.player : selectedRegion.units.enemy
-                ).toString()}
-              />
+              <Panel label="Army" value={countUnits(selectedVisibleUnits).toString()} />
             </div>
 
-            <div className="mt-4 rounded-2xl bg-slate-800 p-3">
-              <h3 className="font-black">Buildings</h3>
+            <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-900 p-3">
+              <h3 className="font-black text-slate-100">Base Structures</h3>
               <div className="mt-2 flex flex-wrap gap-2">
                 {selectedRegion.buildings.length > 0 ? (
                   selectedRegion.buildings.map((buildingId) => (
@@ -844,58 +923,44 @@ export default function App() {
               </div>
             </div>
 
-            <div className="mt-4 rounded-2xl bg-slate-800 p-3">
-              <h3 className="font-black">Garrison</h3>
+            <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-900 p-3">
+              <h3 className="font-black text-slate-100">Local Garrison</h3>
               <div className="mt-2 grid grid-cols-2 gap-2">
                 {UNIT_ORDER.map((unitId) => {
-                  const units = selectedRegion.owner === 'player' ? selectedRegion.units.player : selectedRegion.units.enemy;
-
                   return (
-                    <div key={unitId} className="rounded-xl bg-slate-950/70 px-3 py-2">
+                    <div key={unitId} className="rounded-xl bg-slate-950 px-3 py-2">
                       <p className="text-xs font-bold text-slate-400">{UNITS[unitId].shortName}</p>
-                      <p className="text-lg font-black">{units[unitId]}</p>
+                      <p className="text-lg font-black">{selectedVisibleUnits[unitId]}</p>
                     </div>
                   );
                 })}
               </div>
+              <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                <div className="rounded-xl bg-slate-950 px-3 py-2">
+                  <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Attack</p>
+                  <p className="text-lg font-black text-red-300">{selectedAttackPower}</p>
+                </div>
+                <div className="rounded-xl bg-slate-950 px-3 py-2">
+                  <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Defence</p>
+                  <p className="text-lg font-black text-cyan-300">{selectedDefensePower}</p>
+                </div>
+              </div>
             </div>
           </section>
 
-          <section className="rounded-[1.75rem] border border-slate-700 bg-slate-900 p-4">
-            <h2 className="text-xl font-black">Build Base</h2>
-            <p className="mt-1 text-sm text-slate-400">Buildings are regional, so place production where you need units.</p>
-            <div className="mt-3 grid gap-2">
-              {BUILDING_ORDER.filter((buildingId) => buildingId !== 'command').map((buildingId) => {
-                const building = BUILDINGS[buildingId];
-                const owned = selectedRegion.buildings.includes(buildingId);
-                const disabled = selectedRegion.owner !== 'player' || owned || game.playerCredits < building.cost || Boolean(game.winner);
+          <section className="rounded-[1.75rem] border border-slate-700 bg-slate-950 p-4">
+            <p className="text-xs font-black uppercase tracking-[0.24em] text-amber-300">Army Panel</p>
+            <h2 className="mt-1 text-xl font-black">Recruit & Deploy</h2>
+            <p className="mt-1 text-sm text-slate-400">Train units in owned regions, then send a task force along connected routes.</p>
 
-                return (
-                  <button
-                    key={buildingId}
-                    type="button"
-                    disabled={disabled}
-                    onClick={() => build(buildingId)}
-                    className="min-h-16 rounded-2xl border border-slate-700 bg-slate-800 px-3 py-3 text-left transition enabled:active:scale-[0.98] disabled:opacity-45"
-                  >
-                    <span className="flex items-center justify-between gap-2">
-                      <span className="font-black">
-                        {building.shortName} {building.name}
-                      </span>
-                      <span className="rounded-full bg-cyan-300 px-2 py-1 text-xs font-black text-slate-950">
-                        {owned ? 'Built' : `${building.cost}c`}
-                      </span>
-                    </span>
-                    <span className="mt-1 block text-xs leading-5 text-slate-400">{building.description}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-
-          <section className="rounded-[1.75rem] border border-slate-700 bg-slate-900 p-4">
-            <h2 className="text-xl font-black">Recruit Units</h2>
-            <div className="mt-3 grid gap-2">
+            <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-900 p-3">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="font-black">Recruit Units</h3>
+                <span className="rounded-full bg-emerald-300 px-2 py-1 text-xs font-black text-slate-950">
+                  {game.playerCredits}c
+                </span>
+              </div>
+              <div className="mt-3 grid gap-2">
               {UNIT_ORDER.map((unitId) => {
                 const unit = UNITS[unitId];
                 const unlocked = selectedRegion.buildings.includes(unit.requires);
@@ -907,7 +972,7 @@ export default function App() {
                     type="button"
                     disabled={disabled}
                     onClick={() => recruit(unitId)}
-                    className="min-h-16 rounded-2xl border border-slate-700 bg-slate-800 px-3 py-3 text-left transition enabled:active:scale-[0.98] disabled:opacity-45"
+                    className="min-h-16 rounded-2xl border border-slate-700 bg-slate-950 px-3 py-3 text-left transition enabled:hover:border-emerald-300/50 enabled:active:scale-[0.98] disabled:opacity-45"
                   >
                     <span className="flex items-center justify-between gap-2">
                       <span className="font-black">
@@ -923,14 +988,19 @@ export default function App() {
                   </button>
                 );
               })}
+              </div>
             </div>
-          </section>
 
-          <section className="rounded-[1.75rem] border border-slate-700 bg-slate-900 p-4">
-            <h2 className="text-xl font-black">Move or Attack</h2>
-            <p className="mt-1 text-sm text-slate-400">Pick a connected region, set the army size, then send it.</p>
+            <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-900 p-3">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="font-black">Move or Attack</h3>
+                <span className="rounded-full bg-cyan-300 px-2 py-1 text-xs font-black text-slate-950">
+                  {draftTotal} selected
+                </span>
+              </div>
+              <p className="mt-1 text-sm text-slate-400">Choose a neighboring region and set the task force size.</p>
 
-            <div className="mt-3 grid grid-cols-2 gap-2">
+              <div className="mt-3 grid grid-cols-2 gap-2">
               {selectedConnections.map((connectionId) => {
                 const connection = regionById[connectionId];
                 const connectionState = game.regions[connectionId];
@@ -941,8 +1011,8 @@ export default function App() {
                     key={connectionId}
                     type="button"
                     onClick={() => setDestinationId(connectionId)}
-                    className={`min-h-14 rounded-2xl border px-3 py-2 text-left text-sm font-black transition active:scale-[0.98] ${
-                      active ? 'border-white bg-white text-slate-950' : 'border-slate-700 bg-slate-800 text-slate-100'
+                    className={`min-h-16 rounded-2xl border px-3 py-2 text-left text-sm font-black transition active:scale-[0.98] ${
+                      active ? 'border-cyan-200 bg-cyan-100 text-slate-950' : 'border-slate-700 bg-slate-950 text-slate-100'
                     }`}
                   >
                     <span className="block">{connection.name}</span>
@@ -950,9 +1020,21 @@ export default function App() {
                   </button>
                 );
               })}
-            </div>
+              </div>
 
-            <div className="mt-3 space-y-2 rounded-2xl bg-slate-800 p-3">
+              <div className="mt-3 rounded-2xl border border-slate-700 bg-slate-950 p-3 text-sm text-slate-300">
+                Target:{' '}
+                <span className="font-black text-white">
+                  {destinationDefinition ? destinationDefinition.name : 'No destination selected'}
+                </span>
+                {destinationState ? (
+                  <span className="ml-2 rounded-full bg-slate-800 px-2 py-1 text-xs font-black">
+                    {ownerLabel[destinationState.owner]}
+                  </span>
+                ) : null}
+              </div>
+
+              <div className="mt-3 space-y-2 rounded-2xl bg-slate-950 p-3">
               {UNIT_ORDER.map((unitId) => (
                 <div key={unitId} className="grid grid-cols-[1fr_auto] items-center gap-3">
                   <div>
@@ -980,34 +1062,50 @@ export default function App() {
                   </div>
                 </div>
               ))}
-            </div>
+              </div>
 
-            <button
-              type="button"
-              disabled={!canMove || !destinationId || countUnits(draft) === 0 || Boolean(game.winner)}
-              onClick={sendArmy}
-              className="mt-3 min-h-14 w-full rounded-2xl bg-cyan-300 px-4 py-3 text-lg font-black text-slate-950 transition active:scale-[0.98] disabled:opacity-40"
-            >
-              Send Army
-            </button>
+              <button
+                type="button"
+                disabled={!canMove || !destinationId || draftTotal === 0 || Boolean(game.winner)}
+                onClick={sendArmy}
+                className="mt-3 min-h-14 w-full rounded-2xl bg-cyan-300 px-4 py-3 text-lg font-black text-slate-950 transition active:scale-[0.98] disabled:opacity-40"
+              >
+                Send Task Force
+              </button>
+            </div>
           </section>
 
-          <section className="grid grid-cols-2 gap-3 pb-[env(safe-area-inset-bottom)]">
-            <button
-              type="button"
-              onClick={endTurn}
-              disabled={Boolean(game.winner)}
-              className="min-h-16 rounded-[1.25rem] bg-emerald-300 px-4 py-3 text-lg font-black text-slate-950 shadow-lg shadow-emerald-950/30 active:scale-[0.98] disabled:opacity-40"
-            >
-              End Turn
-            </button>
-            <button
-              type="button"
-              onClick={resetGame}
-              className="min-h-16 rounded-[1.25rem] border border-slate-600 bg-slate-800 px-4 py-3 text-lg font-black text-white active:scale-[0.98]"
-            >
-              New Game
-            </button>
+          <section className="rounded-[1.75rem] border border-slate-700 bg-slate-950 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+            <p className="text-xs font-black uppercase tracking-[0.24em] text-cyan-300">Production Panel</p>
+            <h2 className="mt-1 text-xl font-black">Build Base</h2>
+            <p className="mt-1 text-sm text-slate-400">Buildings are regional, so place production where you need units.</p>
+            <div className="mt-3 grid gap-2">
+              {BUILDING_ORDER.filter((buildingId) => buildingId !== 'command').map((buildingId) => {
+                const building = BUILDINGS[buildingId];
+                const owned = selectedRegion.buildings.includes(buildingId);
+                const disabled = selectedRegion.owner !== 'player' || owned || game.playerCredits < building.cost || Boolean(game.winner);
+
+                return (
+                  <button
+                    key={buildingId}
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => build(buildingId)}
+                    className="min-h-16 rounded-2xl border border-slate-700 bg-slate-900 px-3 py-3 text-left transition enabled:hover:border-cyan-300/50 enabled:active:scale-[0.98] disabled:opacity-45"
+                  >
+                    <span className="flex items-center justify-between gap-2">
+                      <span className="font-black">
+                        {building.shortName} {building.name}
+                      </span>
+                      <span className="rounded-full bg-cyan-300 px-2 py-1 text-xs font-black text-slate-950">
+                        {owned ? 'Built' : `${building.cost}c`}
+                      </span>
+                    </span>
+                    <span className="mt-1 block text-xs leading-5 text-slate-400">{building.description}</span>
+                  </button>
+                );
+              })}
+            </div>
           </section>
         </aside>
       </section>
@@ -1015,9 +1113,19 @@ export default function App() {
   );
 }
 
-function Stat({ label, value, tone = 'slate' }: { label: string; value: string; tone?: 'slate' | 'cyan' | 'green' }) {
+function Stat({
+  label,
+  value,
+  detail,
+  tone = 'slate',
+}: {
+  label: string;
+  value: string;
+  detail?: string;
+  tone?: 'slate' | 'cyan' | 'green';
+}) {
   const toneClasses = {
-    slate: 'bg-slate-800 text-white',
+    slate: 'bg-slate-900 text-white ring-1 ring-slate-700',
     cyan: 'bg-cyan-300 text-slate-950',
     green: 'bg-emerald-300 text-slate-950',
   };
@@ -1026,6 +1134,7 @@ function Stat({ label, value, tone = 'slate' }: { label: string; value: string; 
     <div className={`rounded-2xl px-3 py-2 ${toneClasses[tone]}`}>
       <p className="text-[0.65rem] font-black uppercase tracking-wider opacity-70">{label}</p>
       <p className="text-xl font-black">{value}</p>
+      {detail ? <p className="text-[0.65rem] font-bold opacity-70">{detail}</p> : null}
     </div>
   );
 }
