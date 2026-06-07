@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 
 type Faction = 'player' | 'enemy' | 'neutral';
-type BuildingId = 'command' | 'refinery' | 'barracks' | 'warFactory' | 'turret';
-type UnitId = 'infantry' | 'rocket' | 'tank' | 'artillery';
+type BuildingId = 'command' | 'refinery' | 'barracks' | 'warFactory';
+type UnitId = 'infantry' | 'rocket' | 'tank';
 type Units = Record<UnitId, number>;
 
 interface RegionDefinition {
@@ -54,10 +54,10 @@ interface UnitDefinition {
 }
 
 const SAVE_KEY = 'command-frontier-save-v1';
-const EMPTY_UNITS: Units = { infantry: 0, rocket: 0, tank: 0, artillery: 0 };
+const EMPTY_UNITS: Units = { infantry: 0, rocket: 0, tank: 0 };
 
-const BUILDING_ORDER: BuildingId[] = ['command', 'refinery', 'barracks', 'warFactory', 'turret'];
-const UNIT_ORDER: UnitId[] = ['infantry', 'rocket', 'tank', 'artillery'];
+const BUILDING_ORDER: BuildingId[] = ['command', 'refinery', 'barracks', 'warFactory'];
+const UNIT_ORDER: UnitId[] = ['infantry', 'rocket', 'tank'];
 
 const BUILDINGS: Record<BuildingId, BuildingDefinition> = {
   command: {
@@ -90,15 +90,7 @@ const BUILDINGS: Record<BuildingId, BuildingDefinition> = {
     shortName: 'WF',
     cost: 240,
     income: 0,
-    description: 'Builds Tanks and Artillery for heavy pushes.',
-  },
-  turret: {
-    id: 'turret',
-    name: 'Defence Turret',
-    shortName: 'TUR',
-    cost: 180,
-    income: 0,
-    description: 'Adds a strong defensive bonus during auto-battles.',
+    description: 'Builds Tanks for heavy pushes.',
   },
 };
 
@@ -132,16 +124,6 @@ const UNITS: Record<UnitId, UnitDefinition> = {
     defense: 6,
     requires: 'warFactory',
     description: 'Armoured breakthrough unit with high combat value.',
-  },
-  artillery: {
-    id: 'artillery',
-    name: 'Artillery',
-    shortName: 'ART',
-    cost: 145,
-    attack: 10,
-    defense: 3,
-    requires: 'warFactory',
-    description: 'Long-range firepower that hits hard but defends poorly.',
   },
 };
 
@@ -221,7 +203,7 @@ function createNewGame(): GameState {
       junction: createRegion('neutral', [], {}, { infantry: 3, rocket: 1 }),
       foundry: createRegion('enemy', ['command', 'refinery', 'warFactory'], {}, { infantry: 4, tank: 1 }),
       oasis: createRegion('neutral', [], {}, { infantry: 2 }),
-      citadel: createRegion('enemy', ['command', 'barracks', 'turret'], {}, { infantry: 6, rocket: 2 }),
+      citadel: createRegion('enemy', ['command', 'barracks'], {}, { infantry: 6, rocket: 2 }),
       relay: createRegion('enemy', ['command'], {}, { infantry: 3 }),
     },
     log: [
@@ -242,6 +224,21 @@ function loadGame(): GameState {
     const parsed = JSON.parse(saved) as GameState;
 
     if (parsed.version !== 1 || !parsed.regions || !parsed.regions.harbor) {
+      return createNewGame();
+    }
+
+    const validBuildings = new Set<string>(BUILDING_ORDER);
+    const validRegions = REGIONS.every((region) => {
+      const regionState = parsed.regions[region.id];
+
+      return (
+        regionState &&
+        ['player', 'enemy', 'neutral'].includes(regionState.owner) &&
+        regionState.buildings.every((buildingId) => validBuildings.has(buildingId))
+      );
+    });
+
+    if (!validRegions) {
       return createNewGame();
     }
 
@@ -318,10 +315,9 @@ function resolveCombat(
   const target = state.regions[targetRegionId];
   const regionName = regionById[targetRegionId].name;
   const defendingUnits = target.owner === 'neutral' ? target.units.enemy : target.units[defender];
-  const turretBonus = target.buildings.includes('turret') ? 14 : 0;
   const commandBonus = target.buildings.includes('command') ? 4 : 0;
   const attackScore = unitPower(attackingUnits, 'attack') * (0.9 + Math.random() * 0.25);
-  const defenseScore = (unitPower(defendingUnits, 'defense') + turretBonus + commandBonus) * (0.9 + Math.random() * 0.25);
+  const defenseScore = (unitPower(defendingUnits, 'defense') + commandBonus) * (0.9 + Math.random() * 0.25);
 
   if (attackScore > defenseScore) {
     const survivors = distributeSurvivors(attackingUnits, attackScore - defenseScore * 0.45, 'attack');
@@ -394,7 +390,7 @@ function enemyMoveUnits(state: GameState, fromRegionId: string, toRegionId: stri
 }
 
 function chooseEnemyBuild(region: RegionState, credits: number): BuildingId | undefined {
-  const priorities: BuildingId[] = ['refinery', 'barracks', 'warFactory', 'turret'];
+  const priorities: BuildingId[] = ['refinery', 'barracks', 'warFactory'];
 
   return priorities.find((buildingId) => !region.buildings.includes(buildingId) && BUILDINGS[buildingId].cost <= credits);
 }
@@ -489,7 +485,6 @@ function makeDraftFromAvailable(available: Units): Units {
     infantry: Math.min(2, available.infantry),
     rocket: Math.min(1, available.rocket),
     tank: Math.min(1, available.tank),
-    artillery: Math.min(1, available.artillery),
   };
 }
 
