@@ -9,7 +9,7 @@ import {
 } from './lib/analyseMealHandler.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const distDir = path.resolve(__dirname, '../dist');
+const distDir = path.join(process.cwd(), 'dist');
 const isProduction = process.env.NODE_ENV === 'production';
 
 const app = express();
@@ -57,12 +57,15 @@ app.post('/api/analyse-meal', async (req, res) => {
 if (isProduction) {
   app.use(express.static(distDir));
 
-  app.get('*', (req, res, next) => {
+  // Express 5 does not accept app.get('*') — use middleware for SPA fallback.
+  app.use((req, res, next) => {
     if (req.path.startsWith('/api')) {
       next();
       return;
     }
-    res.sendFile(path.join(distDir, 'index.html'));
+    res.sendFile(path.join(distDir, 'index.html'), (err) => {
+      if (err) next(err);
+    });
   });
 }
 
