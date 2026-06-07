@@ -34,6 +34,7 @@ import { SymptomEpisodeCard } from '@/components/SymptomEpisodeCard';
 import { StatCard } from '@/components/StatCard';
 import { WeeklyProgressCard } from '@/components/WeeklyProgressCard';
 import { QuickNavLinks } from '@/components/QuickNavLinks';
+import { InstallAppPrompt } from '@/components/InstallAppPrompt';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 
@@ -109,6 +110,8 @@ export function HomePage() {
           })}
         </p>
       </div>
+
+      <InstallAppPrompt />
 
       <section className="space-y-2">
         <h2 className="text-sm font-medium text-slate-600">Quick links</h2>
