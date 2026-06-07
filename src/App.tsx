@@ -128,14 +128,14 @@ const UNITS: Record<UnitId, UnitDefinition> = {
 };
 
 const REGIONS: RegionDefinition[] = [
-  { id: 'harbor', name: 'Harbor Gate', baseIncome: 8, x: 16, y: 25, connections: ['ridge', 'delta'] },
-  { id: 'ridge', name: 'Iron Ridge', baseIncome: 7, x: 39, y: 15, connections: ['harbor', 'junction', 'foundry'] },
-  { id: 'delta', name: 'Sunken Delta', baseIncome: 9, x: 22, y: 55, connections: ['harbor', 'junction', 'oasis'] },
-  { id: 'junction', name: 'Crossroad Junction', baseIncome: 6, x: 49, y: 44, connections: ['ridge', 'delta', 'foundry', 'oasis', 'citadel'] },
-  { id: 'foundry', name: 'Ash Foundry', baseIncome: 10, x: 69, y: 22, connections: ['ridge', 'junction', 'citadel'] },
-  { id: 'oasis', name: 'Green Oasis', baseIncome: 7, x: 43, y: 75, connections: ['delta', 'junction', 'relay'] },
-  { id: 'citadel', name: 'Red Citadel', baseIncome: 9, x: 80, y: 50, connections: ['foundry', 'junction', 'relay'] },
-  { id: 'relay', name: 'Signal Relay', baseIncome: 8, x: 66, y: 82, connections: ['oasis', 'citadel'] },
+  { id: 'harbor', name: 'Harbor Gate', baseIncome: 8, x: 22, y: 18, connections: ['ridge', 'delta'] },
+  { id: 'ridge', name: 'Iron Ridge', baseIncome: 7, x: 52, y: 12, connections: ['harbor', 'junction', 'foundry'] },
+  { id: 'delta', name: 'Sunken Delta', baseIncome: 9, x: 20, y: 48, connections: ['harbor', 'junction', 'oasis'] },
+  { id: 'junction', name: 'Crossroad Junction', baseIncome: 6, x: 50, y: 45, connections: ['ridge', 'delta', 'foundry', 'oasis', 'citadel'] },
+  { id: 'foundry', name: 'Ash Foundry', baseIncome: 10, x: 80, y: 24, connections: ['ridge', 'junction', 'citadel'] },
+  { id: 'oasis', name: 'Green Oasis', baseIncome: 7, x: 32, y: 78, connections: ['delta', 'junction', 'relay'] },
+  { id: 'citadel', name: 'Red Citadel', baseIncome: 9, x: 80, y: 55, connections: ['foundry', 'junction', 'relay'] },
+  { id: 'relay', name: 'Signal Relay', baseIncome: 8, x: 65, y: 84, connections: ['oasis', 'citadel'] },
 ];
 
 const regionById = REGIONS.reduce<Record<string, RegionDefinition>>((lookup, region) => {
@@ -159,6 +159,13 @@ function emptyUnits(): Units {
 
 function countUnits(units: Units) {
   return UNIT_ORDER.reduce((total, unitId) => total + units[unitId], 0);
+}
+
+function clampUnits(requested: Units, available: Units) {
+  return UNIT_ORDER.reduce<Units>((units, unitId) => {
+    units[unitId] = Math.max(0, Math.min(available[unitId], Math.floor(requested[unitId])));
+    return units;
+  }, emptyUnits());
 }
 
 function unitPower(units: Units, mode: 'attack' | 'defense') {
@@ -213,6 +220,76 @@ function createNewGame(): GameState {
   };
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function isFaction(value: unknown): value is Faction {
+  return value === 'player' || value === 'enemy' || value === 'neutral';
+}
+
+function isBuildingId(value: unknown): value is BuildingId {
+  return typeof value === 'string' && BUILDING_ORDER.includes(value as BuildingId);
+}
+
+function readNonNegativeInteger(value: unknown, fallback: number) {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? Math.floor(value) : fallback;
+}
+
+function normalizeUnits(value: unknown) {
+  const savedUnits = isRecord(value) ? value : {};
+
+  return UNIT_ORDER.reduce<Units>((units, unitId) => {
+    units[unitId] = readNonNegativeInteger(savedUnits[unitId], 0);
+    return units;
+  }, emptyUnits());
+}
+
+function normalizeSavedGame(value: unknown): GameState | undefined {
+  if (!isRecord(value) || value.version !== 1 || !isRecord(value.regions)) {
+    return undefined;
+  }
+
+  const regions: Record<string, RegionState> = {};
+
+  for (const regionDefinition of REGIONS) {
+    const savedRegion = value.regions[regionDefinition.id];
+
+    if (!isRecord(savedRegion) || !isFaction(savedRegion.owner) || !Array.isArray(savedRegion.buildings)) {
+      return undefined;
+    }
+
+    const savedBuildings = savedRegion.buildings;
+
+    if (!savedBuildings.every(isBuildingId)) {
+      return undefined;
+    }
+
+    const savedUnits = isRecord(savedRegion.units) ? savedRegion.units : {};
+    regions[regionDefinition.id] = {
+      owner: savedRegion.owner,
+      buildings: BUILDING_ORDER.filter((buildingId) => savedBuildings.includes(buildingId)),
+      units: {
+        player: normalizeUnits(savedUnits.player),
+        enemy: normalizeUnits(savedUnits.enemy),
+      },
+    };
+  }
+
+  const savedLog = Array.isArray(value.log) ? value.log.filter((entry) => typeof entry === 'string').slice(0, 9) : [];
+  const savedWinner = isFaction(value.winner) && value.winner !== 'neutral' ? value.winner : undefined;
+
+  return {
+    version: 1,
+    turn: Math.max(1, readNonNegativeInteger(value.turn, 1)),
+    playerCredits: readNonNegativeInteger(value.playerCredits, 260),
+    enemyCredits: readNonNegativeInteger(value.enemyCredits, 260),
+    regions,
+    log: savedLog.length > 0 ? savedLog : createNewGame().log,
+    winner: savedWinner ?? getWinner(regions),
+  };
+}
+
 function loadGame(): GameState {
   const saved = localStorage.getItem(SAVE_KEY);
 
@@ -221,28 +298,7 @@ function loadGame(): GameState {
   }
 
   try {
-    const parsed = JSON.parse(saved) as GameState;
-
-    if (parsed.version !== 1 || !parsed.regions || !parsed.regions.harbor) {
-      return createNewGame();
-    }
-
-    const validBuildings = new Set<string>(BUILDING_ORDER);
-    const validRegions = REGIONS.every((region) => {
-      const regionState = parsed.regions[region.id];
-
-      return (
-        regionState &&
-        ['player', 'enemy', 'neutral'].includes(regionState.owner) &&
-        regionState.buildings.every((buildingId) => validBuildings.has(buildingId))
-      );
-    });
-
-    if (!validRegions) {
-      return createNewGame();
-    }
-
-    return parsed;
+    return normalizeSavedGame(JSON.parse(saved)) ?? createNewGame();
   } catch {
     return createNewGame();
   }
@@ -351,42 +407,53 @@ function resolveCombat(
 function moveUnits(state: GameState, fromRegionId: string, toRegionId: string, unitsToMove: Units) {
   const from = state.regions[fromRegionId];
   const to = state.regions[toRegionId];
+  const legalUnitsToMove = clampUnits(unitsToMove, from.units.player);
+
+  if (from.owner !== 'player' || !regionById[fromRegionId].connections.includes(toRegionId) || countUnits(legalUnitsToMove) === 0) {
+    return;
+  }
+
   const fromName = regionById[fromRegionId].name;
   const toName = regionById[toRegionId].name;
 
   UNIT_ORDER.forEach((unitId) => {
-    from.units.player[unitId] -= unitsToMove[unitId];
+    from.units.player[unitId] -= legalUnitsToMove[unitId];
   });
 
   if (to.owner === 'player') {
     UNIT_ORDER.forEach((unitId) => {
-      to.units.player[unitId] += unitsToMove[unitId];
+      to.units.player[unitId] += legalUnitsToMove[unitId];
     });
-    addLog(state, `Moved ${formatUnits(unitsToMove)} from ${fromName} to ${toName}.`);
+    addLog(state, `Moved ${formatUnits(legalUnitsToMove)} from ${fromName} to ${toName}.`);
     return;
   }
 
-  addLog(state, `Battle for ${toName}: ${formatUnits(unitsToMove)} advanced from ${fromName}.`);
-  resolveCombat(state, toRegionId, 'player', unitsToMove);
+  addLog(state, `Battle for ${toName}: ${formatUnits(legalUnitsToMove)} advanced from ${fromName}.`);
+  resolveCombat(state, toRegionId, 'player', legalUnitsToMove);
 }
 
 function enemyMoveUnits(state: GameState, fromRegionId: string, toRegionId: string, unitsToMove: Units) {
   const from = state.regions[fromRegionId];
   const to = state.regions[toRegionId];
+  const legalUnitsToMove = clampUnits(unitsToMove, from.units.enemy);
+
+  if (from.owner !== 'enemy' || !regionById[fromRegionId].connections.includes(toRegionId) || countUnits(legalUnitsToMove) === 0) {
+    return;
+  }
 
   UNIT_ORDER.forEach((unitId) => {
-    from.units.enemy[unitId] -= unitsToMove[unitId];
+    from.units.enemy[unitId] -= legalUnitsToMove[unitId];
   });
 
   if (to.owner === 'enemy') {
     UNIT_ORDER.forEach((unitId) => {
-      to.units.enemy[unitId] += unitsToMove[unitId];
+      to.units.enemy[unitId] += legalUnitsToMove[unitId];
     });
     return;
   }
 
   addLog(state, `Crimson Hand attacks ${regionById[toRegionId].name} from ${regionById[fromRegionId].name}.`);
-  resolveCombat(state, toRegionId, 'enemy', unitsToMove);
+  resolveCombat(state, toRegionId, 'enemy', legalUnitsToMove);
 }
 
 function chooseEnemyBuild(region: RegionState, credits: number): BuildingId | undefined {
@@ -698,13 +765,15 @@ export default function App() {
                     key={region.id}
                     type="button"
                     onClick={() => setSelectedRegionId(region.id)}
-                    className={`absolute flex min-h-24 w-28 -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center rounded-3xl border-2 p-2 text-center shadow-xl transition active:scale-95 sm:w-32 ${
+                    className={`absolute flex min-h-20 w-20 -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center rounded-2xl border-2 p-1.5 text-center shadow-xl transition active:scale-95 sm:min-h-24 sm:w-32 sm:rounded-3xl sm:p-2 ${
                       isSelected ? 'ring-4 ring-white/80' : ''
                     } ${getOwnerClasses(regionState.owner)}`}
                     style={{ left: `${region.x}%`, top: `${region.y}%` }}
                   >
-                    <span className="text-[0.63rem] font-black uppercase tracking-wide">{ownerLabel[regionState.owner]}</span>
-                    <span className="mt-1 text-sm font-black leading-tight">{region.name}</span>
+                    <span className="text-[0.55rem] font-black uppercase tracking-wide sm:text-[0.63rem]">
+                      {ownerLabel[regionState.owner]}
+                    </span>
+                    <span className="mt-0.5 text-[0.68rem] font-black leading-tight sm:mt-1 sm:text-sm">{region.name}</span>
                     <span className="mt-1 rounded-full bg-black/10 px-2 py-1 text-xs font-bold">
                       +{region.baseIncome} / {countUnits(visibleUnits)} units
                     </span>
@@ -755,6 +824,24 @@ export default function App() {
                   selectedRegion.owner === 'player' ? selectedRegion.units.player : selectedRegion.units.enemy
                 ).toString()}
               />
+            </div>
+
+            <div className="mt-4 rounded-2xl bg-slate-800 p-3">
+              <h3 className="font-black">Buildings</h3>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {selectedRegion.buildings.length > 0 ? (
+                  selectedRegion.buildings.map((buildingId) => (
+                    <span
+                      key={buildingId}
+                      className="rounded-full bg-cyan-300 px-3 py-1.5 text-xs font-black text-slate-950"
+                    >
+                      {BUILDINGS[buildingId].name}
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-sm text-slate-400">No buildings yet.</span>
+                )}
+              </div>
             </div>
 
             <div className="mt-4 rounded-2xl bg-slate-800 p-3">
