@@ -1,3 +1,5 @@
+import type { IScannerControls } from '@zxing/browser';
+
 export interface BarcodeScanResult {
   ok: boolean;
   barcode?: string;
@@ -7,8 +9,21 @@ export interface BarcodeScanResult {
 export interface ScannerCapabilities {
   cameraAvailable: boolean;
   nativeDetectorAvailable: boolean;
-  implementation: 'placeholder' | 'native' | 'manual-only';
+  implementation: 'native' | 'zxing' | 'manual-only';
 }
+
+type NativeBarcodeDetector = new (options?: { formats?: string[] }) => {
+  detect: (source: HTMLVideoElement) => Promise<{ rawValue?: string }[]>;
+};
+
+const CAMERA_CONSTRAINTS: MediaStreamConstraints = {
+  video: {
+    facingMode: { ideal: 'environment' },
+    width: { ideal: 1280 },
+    height: { ideal: 720 },
+  },
+  audio: false,
+};
 
 /** Check browser camera / BarcodeDetector support. */
 export function getScannerCapabilities(): ScannerCapabilities {
@@ -21,7 +36,7 @@ export function getScannerCapabilities(): ScannerCapabilities {
 
   let implementation: ScannerCapabilities['implementation'] = 'manual-only';
   if (nativeDetectorAvailable) implementation = 'native';
-  else if (cameraAvailable) implementation = 'placeholder';
+  else if (cameraAvailable) implementation = 'zxing';
 
   return {
     cameraAvailable,
@@ -36,15 +51,137 @@ export function getScannerStatusLabel(): string {
     return 'Camera scanner ready (browser API)';
   }
   if (caps.cameraAvailable) {
-    return 'Camera preview placeholder — enter barcode manually';
+    return 'Camera scanner ready (ZXing fallback)';
   }
   return 'Manual barcode entry only';
 }
 
-/**
- * Placeholder scan flow.
- * Uses native BarcodeDetector when available; otherwise prompts manual entry.
- */
+function stopVideoStream(videoElement: HTMLVideoElement) {
+  if (videoElement.srcObject) {
+    (videoElement.srcObject as MediaStream).getTracks().forEach((track) => track.stop());
+    videoElement.srcObject = null;
+  }
+}
+
+function normaliseDetectedBarcode(raw: string | undefined): string | null {
+  const normalized = normalizeBarcodeInput(raw ?? '');
+  return isValidBarcodeFormat(normalized) ? normalized : null;
+}
+
+async function scanWithNativeDetector(
+  videoElement: HTMLVideoElement,
+  timeoutMs: number
+): Promise<BarcodeScanResult> {
+  let stream: MediaStream | null = null;
+
+  try {
+    stream = await navigator.mediaDevices.getUserMedia(CAMERA_CONSTRAINTS);
+    videoElement.srcObject = stream;
+    await videoElement.play();
+
+    const BarcodeDetectorCtor = (window as typeof window & {
+      BarcodeDetector?: NativeBarcodeDetector;
+    }).BarcodeDetector;
+
+    if (!BarcodeDetectorCtor) {
+      return { ok: false, error: 'Barcode detector is not available.' };
+    }
+
+    const detector = new BarcodeDetectorCtor({
+      formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e'],
+    });
+    const deadline = Date.now() + timeoutMs;
+
+    while (Date.now() < deadline) {
+      try {
+        const codes = await detector.detect(videoElement);
+        for (const code of codes) {
+          const barcode = normaliseDetectedBarcode(code.rawValue);
+          if (barcode) return { ok: true, barcode };
+        }
+      } catch {
+        // Keep polling while the camera stream is warming up.
+      }
+      await new Promise((resolve) => setTimeout(resolve, 250));
+    }
+
+    return {
+      ok: false,
+      error: 'No barcode detected — try better lighting or manual entry.',
+    };
+  } catch {
+    return { ok: false, error: 'Could not access camera. Check permissions or use manual entry.' };
+  } finally {
+    if (stream) stopVideoStream(videoElement);
+  }
+}
+
+async function scanWithZxing(
+  videoElement: HTMLVideoElement,
+  timeoutMs: number
+): Promise<BarcodeScanResult> {
+  const { BarcodeFormat, BrowserMultiFormatReader } = await import('@zxing/browser');
+  const retailBarcodeFormats = [
+    BarcodeFormat.EAN_13,
+    BarcodeFormat.EAN_8,
+    BarcodeFormat.UPC_A,
+    BarcodeFormat.UPC_E,
+  ];
+  const reader = new BrowserMultiFormatReader(undefined, {
+    delayBetweenScanAttempts: 250,
+    delayBetweenScanSuccess: 250,
+  });
+  reader.possibleFormats = retailBarcodeFormats;
+
+  const scannerState: { controls?: IScannerControls } = {};
+
+  try {
+    return await new Promise<BarcodeScanResult>((resolve) => {
+      let settled = false;
+
+      const finish = (result: BarcodeScanResult) => {
+        if (settled) return;
+        settled = true;
+        scannerState.controls?.stop();
+        stopVideoStream(videoElement);
+        resolve(result);
+      };
+
+      const timeout = window.setTimeout(() => {
+        finish({
+          ok: false,
+          error: 'No barcode detected — try better lighting or manual entry.',
+        });
+      }, timeoutMs);
+
+      void reader
+        .decodeFromConstraints(CAMERA_CONSTRAINTS, videoElement, (result, _error, scannerControls) => {
+          scannerState.controls = scannerControls;
+          const barcode = normaliseDetectedBarcode(result?.getText());
+          if (barcode) {
+            window.clearTimeout(timeout);
+            finish({ ok: true, barcode });
+          }
+        })
+        .then((scannerControls) => {
+          scannerState.controls = scannerControls;
+        })
+        .catch(() => {
+          window.clearTimeout(timeout);
+          finish({
+            ok: false,
+            error: 'Could not access camera. Check permissions or use manual entry.',
+          });
+        });
+    });
+  } finally {
+    scannerState.controls?.stop();
+    BrowserMultiFormatReader.releaseAllStreams();
+    stopVideoStream(videoElement);
+  }
+}
+
+/** Uses native BarcodeDetector when available, otherwise falls back to ZXing. */
 export async function scanBarcodeFromCamera(
   videoElement: HTMLVideoElement,
   timeoutMs = 15000
@@ -55,52 +192,11 @@ export async function scanBarcodeFromCamera(
     return { ok: false, error: 'Camera not available on this device.' };
   }
 
-  let stream: MediaStream | null = null;
-
-  try {
-    stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'environment' },
-      audio: false,
-    });
-    videoElement.srcObject = stream;
-    await videoElement.play();
-
-    if (caps.nativeDetectorAvailable) {
-      // @ts-expect-error BarcodeDetector is not in all TS libs yet
-      const detector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e'] });
-      const deadline = Date.now() + timeoutMs;
-
-      while (Date.now() < deadline) {
-        try {
-          const codes = await detector.detect(videoElement);
-          if (codes.length > 0 && codes[0].rawValue) {
-            return { ok: true, barcode: codes[0].rawValue };
-          }
-        } catch {
-          // continue polling
-        }
-        await new Promise((r) => setTimeout(r, 300));
-      }
-
-      return {
-        ok: false,
-        error: 'No barcode detected — try manual entry or better lighting.',
-      };
-    }
-
-    return {
-      ok: false,
-      error:
-        'Live scanning is not supported in this browser yet. Use manual barcode entry below.',
-    };
-  } catch {
-    return { ok: false, error: 'Could not access camera. Check permissions or use manual entry.' };
-  } finally {
-    if (stream) {
-      stream.getTracks().forEach((t) => t.stop());
-      videoElement.srcObject = null;
-    }
+  if (caps.nativeDetectorAvailable) {
+    return scanWithNativeDetector(videoElement, timeoutMs);
   }
+
+  return scanWithZxing(videoElement, timeoutMs);
 }
 
 export function normalizeBarcodeInput(raw: string): string {

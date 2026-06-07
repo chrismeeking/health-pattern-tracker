@@ -120,12 +120,17 @@ export function ScanBarcodePage() {
     if (!videoRef.current) return;
     setScanning(true);
     setScanError(null);
-    const result = await scanBarcodeFromCamera(videoRef.current);
-    setScanning(false);
-    if (result.ok && result.barcode) {
-      await runLookup(result.barcode);
-    } else {
-      setScanError(result.error ?? 'Scan failed.');
+    try {
+      const result = await scanBarcodeFromCamera(videoRef.current);
+      if (result.ok && result.barcode) {
+        await runLookup(result.barcode);
+      } else {
+        setScanError(result.error ?? 'Scan failed.');
+      }
+    } catch {
+      setScanError('Scanner failed to start. Check camera permissions or use manual entry.');
+    } finally {
+      setScanning(false);
     }
   };
 
