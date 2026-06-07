@@ -10,6 +10,7 @@ import {
   exportAllDataJson,
   exportDailyCheckInsCsv,
   exportMealsCsv,
+  exportProfileDataJson,
   exportSymptomEpisodesCsv,
   exportWeightEntriesCsv,
 } from '@/services/export';
@@ -57,7 +58,7 @@ const SEX_OPTIONS: NonNullable<Profile['sex']>[] = [
   'preferNotToSay',
 ];
 
-type DestructiveAction = 'clearDemo' | 'clearAll' | 'resetApp' | null;
+type DestructiveAction = 'clearActiveProfile' | 'clearDemo' | 'clearAll' | 'resetApp' | null;
 
 export function ProfileSettingsPage() {
   const {
@@ -153,7 +154,20 @@ export function ProfileSettingsPage() {
   };
 
   const handleDestructiveConfirm = () => {
-    if (destructiveAction === 'clearDemo' || destructiveAction === 'clearAll') {
+    if (destructiveAction === 'clearActiveProfile' && activeProfile) {
+      update((d) => ({
+        ...d,
+        meals: d.meals.filter((m) => m.profileId !== activeProfile.id),
+        issues: d.issues.filter((i) => i.profileId !== activeProfile.id),
+        symptomEpisodes: d.symptomEpisodes.filter((s) => s.profileId !== activeProfile.id),
+        dailyCheckIns: d.dailyCheckIns.filter((c) => c.profileId !== activeProfile.id),
+        weightEntries: d.weightEntries.filter((w) => w.profileId !== activeProfile.id),
+        waterEntries: d.waterEntries.filter((w) => w.profileId !== activeProfile.id),
+        goals: d.goals.filter((g) => g.profileId !== activeProfile.id),
+        favouriteMeals: d.favouriteMeals.filter((f) => f.profileId !== activeProfile.id),
+        savedFoods: d.savedFoods.filter((f) => f.profileId !== activeProfile.id),
+      }));
+    } else if (destructiveAction === 'clearDemo' || destructiveAction === 'clearAll') {
       clearDemoData();
     } else if (destructiveAction === 'resetApp') {
       resetApp();
@@ -166,6 +180,13 @@ export function ProfileSettingsPage() {
     Exclude<DestructiveAction, null>,
     { title: string; message: string; warning: string; confirmLabel: string }
   > = {
+    clearActiveProfile: {
+      title: 'Clear active profile data?',
+      message:
+        'This removes meals, symptoms, check-ins, weights, goals, favourites, and saved foods for the selected profile only. The profile itself remains.',
+      warning: 'This cannot be undone. Export this profile first if you want a backup.',
+      confirmLabel: 'Clear active profile data',
+    },
     clearDemo: {
       title: 'Clear demo data?',
       message:
@@ -229,6 +250,7 @@ export function ProfileSettingsPage() {
   const storageLabel = isSignedIn
     ? `Local + cloud (${syncMeta.household.name ?? 'household'})`
     : 'Local device only';
+  const activeProfileLabel = activeProfile?.name ?? 'selected profile';
   const suggestedTargets = activeProfile
     ? getSuggestedNutritionTargets(activeProfile)
     : null;
@@ -237,7 +259,11 @@ export function ProfileSettingsPage() {
     <div className="space-y-6 pb-4">
       <div>
         <h1 className="text-xl font-semibold text-slate-800">Settings</h1>
-        <p className="text-sm text-slate-400 mt-0.5">Profiles, export, and app preferences</p>
+        <p className="text-sm text-slate-400 mt-0.5">
+          {activeProfile
+            ? `Editing settings for ${activeProfile.name}`
+            : 'Profiles, export, and app preferences'}
+        </p>
       </div>
 
       <SettingsSection title="Quick navigation" description="Reach key areas from one place.">
@@ -245,8 +271,8 @@ export function ProfileSettingsPage() {
       </SettingsSection>
 
       <SettingsSection
-        title="Profile settings"
-        description="Switch profile or edit details for the active profile."
+        title={activeProfile ? `Profile settings for ${activeProfile.name}` : 'Profile settings'}
+        description="Switch profile or edit details for the selected person."
       >
         <div className="flex flex-wrap gap-2">
           {data.profiles.map((p) => (
@@ -471,8 +497,8 @@ export function ProfileSettingsPage() {
 
       {activeProfile && (
         <SettingsSection
-          title="Nutrition targets"
-          description="Daily targets for the active profile. Goal type sets sensible defaults; you can still edit them manually."
+          title={`Nutrition targets for ${activeProfile.name}`}
+          description="Daily targets for this profile. Goal type sets sensible defaults; you can still edit them manually."
         >
           <Card className="space-y-4">
             {suggestedTargets && (
@@ -535,8 +561,8 @@ export function ProfileSettingsPage() {
       )}
 
       <SettingsSection
-        title="Trigger categories"
-        description="Tags you can apply when logging meals to explore possible patterns — not confirmed causes."
+        title="Trigger tag reference"
+        description="Shared tag list available to every profile when logging meals — not confirmed causes."
       >
         <Card className="flex flex-wrap gap-2">
           {ALL_TRIGGER_TAGS.map((tag) => (
@@ -552,7 +578,7 @@ export function ProfileSettingsPage() {
 
       <SettingsSection
         title="Cloud sync & account"
-        description="Optional Supabase sync for household profiles across devices. Login is never required."
+        description="App-wide sync for all household profiles across devices. Login is never required."
       >
         <Card className="space-y-4">
           <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -689,8 +715,8 @@ export function ProfileSettingsPage() {
       </SettingsSection>
 
       <SettingsSection
-        title="Favourites & packaged foods"
-        description="Quick-add meals and offline barcode lookup."
+        title={`Favourites & packaged foods for ${activeProfileLabel}`}
+        description="Quick-add meals and saved barcode foods for the selected profile."
       >
         <Card className="space-y-3">
           <div className="flex justify-between text-sm">
@@ -738,32 +764,87 @@ export function ProfileSettingsPage() {
 
       <SettingsSection
         title="Data export"
-        description="Download a copy of your data. CSV files open in Excel."
+        description="Export the selected profile first, or export all profiles for a full household backup. CSV files open in Excel."
       >
-        <div className="grid gap-2">
-          <Button variant="outline" fullWidth onClick={() => exportAllDataJson(data)}>
-            Export all data as JSON
-          </Button>
-          <Button variant="outline" fullWidth onClick={() => exportMealsCsv(data)}>
-            Export meals as CSV
-          </Button>
-          <Button variant="outline" fullWidth onClick={() => exportSymptomEpisodesCsv(data)}>
-            Export symptom episodes as CSV
-          </Button>
-          <Button variant="outline" fullWidth onClick={() => exportDailyCheckInsCsv(data)}>
-            Export daily check-ins as CSV
-          </Button>
-          <Button variant="outline" fullWidth onClick={() => exportWeightEntriesCsv(data)}>
-            Export weight entries as CSV
-          </Button>
+        <div className="grid gap-3">
+          {activeProfile && (
+            <Card className="space-y-2">
+              <p className="text-xs font-medium text-slate-600">
+                {activeProfile.name} only
+              </p>
+              <Button
+                variant="outline"
+                fullWidth
+                onClick={() => exportProfileDataJson(data, activeProfile.id)}
+              >
+                Export {activeProfile.name} as JSON
+              </Button>
+              <Button
+                variant="outline"
+                fullWidth
+                onClick={() => exportMealsCsv(data, activeProfile.id)}
+              >
+                Export {activeProfile.name} meals CSV
+              </Button>
+              <Button
+                variant="outline"
+                fullWidth
+                onClick={() => exportSymptomEpisodesCsv(data, activeProfile.id)}
+              >
+                Export {activeProfile.name} symptoms CSV
+              </Button>
+              <Button
+                variant="outline"
+                fullWidth
+                onClick={() => exportDailyCheckInsCsv(data, activeProfile.id)}
+              >
+                Export {activeProfile.name} check-ins CSV
+              </Button>
+              <Button
+                variant="outline"
+                fullWidth
+                onClick={() => exportWeightEntriesCsv(data, activeProfile.id)}
+              >
+                Export {activeProfile.name} weights CSV
+              </Button>
+            </Card>
+          )}
+
+          <Card className="space-y-2">
+            <p className="text-xs font-medium text-slate-600">All profiles / household</p>
+            <Button variant="outline" fullWidth onClick={() => exportAllDataJson(data)}>
+              Export all data as JSON
+            </Button>
+            <Button variant="outline" fullWidth onClick={() => exportMealsCsv(data)}>
+              Export all meals CSV
+            </Button>
+            <Button variant="outline" fullWidth onClick={() => exportSymptomEpisodesCsv(data)}>
+              Export all symptom episodes CSV
+            </Button>
+            <Button variant="outline" fullWidth onClick={() => exportDailyCheckInsCsv(data)}>
+              Export all daily check-ins CSV
+            </Button>
+            <Button variant="outline" fullWidth onClick={() => exportWeightEntriesCsv(data)}>
+              Export all weight entries CSV
+            </Button>
+          </Card>
         </div>
       </SettingsSection>
 
       <SettingsSection
         title="Data management"
-        description="Destructive actions require confirmation."
+        description="Profile-specific and app-wide destructive actions require confirmation."
       >
         <div className="grid gap-2">
+          {activeProfile && (
+            <Button
+              variant="danger"
+              fullWidth
+              onClick={() => setDestructiveAction('clearActiveProfile')}
+            >
+              Clear {activeProfile.name} data only
+            </Button>
+          )}
           <Button variant="outline" fullWidth onClick={loadDemo}>
             Reload demo data
           </Button>

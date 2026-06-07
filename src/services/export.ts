@@ -30,6 +30,42 @@ function profileName(data: AppData, profileId: string): string {
   return data.profiles.find((p) => p.id === profileId)?.name ?? profileId;
 }
 
+function filenamePart(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '') || 'profile';
+}
+
+function filterRowsByProfile<T extends { profileId: string }>(
+  rows: T[],
+  profileId?: string
+): T[] {
+  return profileId ? rows.filter((row) => row.profileId === profileId) : rows;
+}
+
+function profileFilenameSuffix(data: AppData, profileId?: string): string {
+  return profileId ? `-${filenamePart(profileName(data, profileId))}` : '';
+}
+
+function filterDataForProfile(data: AppData, profileId: string): AppData {
+  return {
+    ...data,
+    profiles: data.profiles.filter((p) => p.id === profileId),
+    meals: data.meals.filter((m) => m.profileId === profileId),
+    issues: data.issues.filter((i) => i.profileId === profileId),
+    symptomEpisodes: data.symptomEpisodes.filter((s) => s.profileId === profileId),
+    dailyCheckIns: data.dailyCheckIns.filter((c) => c.profileId === profileId),
+    weightEntries: data.weightEntries.filter((w) => w.profileId === profileId),
+    waterEntries: data.waterEntries.filter((w) => w.profileId === profileId),
+    goals: data.goals.filter((g) => g.profileId === profileId),
+    favouriteMeals: data.favouriteMeals.filter((f) => f.profileId === profileId),
+    savedFoods: data.savedFoods.filter((f) => f.profileId === profileId),
+    activeProfileId: profileId,
+  };
+}
+
 export function exportAllDataJson(data: AppData): void {
   const payload = {
     exportedAt: new Date().toISOString(),
@@ -43,7 +79,21 @@ export function exportAllDataJson(data: AppData): void {
   );
 }
 
-export function exportMealsCsv(data: AppData): void {
+export function exportProfileDataJson(data: AppData, profileId: string): void {
+  const profileData = filterDataForProfile(data, profileId);
+  const payload = {
+    exportedAt: new Date().toISOString(),
+    appVersion: APP_VERSION,
+    ...profileData,
+  };
+  downloadText(
+    JSON.stringify(payload, null, 2),
+    `health-pattern-tracker${profileFilenameSuffix(data, profileId)}-${dateStamp()}.json`,
+    'application/json;charset=utf-8'
+  );
+}
+
+export function exportMealsCsv(data: AppData, profileId?: string): void {
   const headers = [
     'Profile',
     'Profile ID',
@@ -63,7 +113,7 @@ export function exportMealsCsv(data: AppData): void {
     'Notes',
   ];
 
-  const rows = data.meals.map((m) =>
+  const rows = filterRowsByProfile(data.meals, profileId).map((m) =>
     toCsvRow([
       profileName(data, m.profileId),
       m.profileId,
@@ -86,12 +136,12 @@ export function exportMealsCsv(data: AppData): void {
 
   downloadText(
     [toCsvRow(headers), ...rows].join('\r\n'),
-    `meals-${dateStamp()}.csv`,
+    `meals${profileFilenameSuffix(data, profileId)}-${dateStamp()}.csv`,
     'text/csv;charset=utf-8'
   );
 }
 
-export function exportSymptomEpisodesCsv(data: AppData): void {
+export function exportSymptomEpisodesCsv(data: AppData, profileId?: string): void {
   const headers = [
     'Profile',
     'Profile ID',
@@ -108,7 +158,7 @@ export function exportSymptomEpisodesCsv(data: AppData): void {
     'Notes',
   ];
 
-  const rows = data.symptomEpisodes.map((s) =>
+  const rows = filterRowsByProfile(data.symptomEpisodes, profileId).map((s) =>
     toCsvRow([
       profileName(data, s.profileId),
       s.profileId,
@@ -128,12 +178,12 @@ export function exportSymptomEpisodesCsv(data: AppData): void {
 
   downloadText(
     [toCsvRow(headers), ...rows].join('\r\n'),
-    `symptom-episodes-${dateStamp()}.csv`,
+    `symptom-episodes${profileFilenameSuffix(data, profileId)}-${dateStamp()}.csv`,
     'text/csv;charset=utf-8'
   );
 }
 
-export function exportDailyCheckInsCsv(data: AppData): void {
+export function exportDailyCheckInsCsv(data: AppData, profileId?: string): void {
   const headers = [
     'Profile',
     'Profile ID',
@@ -147,7 +197,7 @@ export function exportDailyCheckInsCsv(data: AppData): void {
     'Notes',
   ];
 
-  const rows = data.dailyCheckIns.map((c) =>
+  const rows = filterRowsByProfile(data.dailyCheckIns, profileId).map((c) =>
     toCsvRow([
       profileName(data, c.profileId),
       c.profileId,
@@ -164,15 +214,15 @@ export function exportDailyCheckInsCsv(data: AppData): void {
 
   downloadText(
     [toCsvRow(headers), ...rows].join('\r\n'),
-    `daily-check-ins-${dateStamp()}.csv`,
+    `daily-check-ins${profileFilenameSuffix(data, profileId)}-${dateStamp()}.csv`,
     'text/csv;charset=utf-8'
   );
 }
 
-export function exportWeightEntriesCsv(data: AppData): void {
+export function exportWeightEntriesCsv(data: AppData, profileId?: string): void {
   const headers = ['Profile', 'Profile ID', 'Date', 'Weight (kg)', 'Notes'];
 
-  const rows = data.weightEntries.map((w) =>
+  const rows = filterRowsByProfile(data.weightEntries, profileId).map((w) =>
     toCsvRow([
       profileName(data, w.profileId),
       w.profileId,
@@ -184,7 +234,7 @@ export function exportWeightEntriesCsv(data: AppData): void {
 
   downloadText(
     [toCsvRow(headers), ...rows].join('\r\n'),
-    `weight-entries-${dateStamp()}.csv`,
+    `weight-entries${profileFilenameSuffix(data, profileId)}-${dateStamp()}.csv`,
     'text/csv;charset=utf-8'
   );
 }
