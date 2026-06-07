@@ -55,15 +55,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    const stored = loadData();
-    if (stored.profiles.length === 0 && !stored.demoLoaded) {
-      const demo = createDemoData();
-      saveData(demo);
-      setData(demo);
-    }
-  }, []);
-
-  useEffect(() => {
     if (!isCloudSyncAvailable()) return;
 
     void restoreSessionFromSupabase().then((meta) => {

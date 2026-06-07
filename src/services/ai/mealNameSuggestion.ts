@@ -1,5 +1,5 @@
 import { ALL_TRIGGER_TAGS, type FavouriteMeal, type Meal, type TriggerTag } from '@/types';
-import { matchUkMeal, type UkMealDatabaseEntry } from '@/data/ukMealDatabase';
+import { matchUkMeal, searchUkMeals, type UkMealDatabaseEntry } from '@/data/ukMealDatabase';
 import { analyseMeal } from './mealAnalysisClient';
 import type { ParsedMealAnalysis } from './types';
 import { favouriteToFormValues } from '@/services/food/favouriteMeals';
@@ -99,7 +99,7 @@ function averageMeals(meals: Meal[]): SuggestedMealValues {
   };
 }
 
-function databaseEntryToSuggestion(entry: UkMealDatabaseEntry): MealNameSuggestion {
+export function databaseEntryToSuggestion(entry: UkMealDatabaseEntry): MealNameSuggestion {
   const confidence = {
     calories: entry.confidence,
     ingredients: entry.confidence,
@@ -129,6 +129,13 @@ function databaseEntryToSuggestion(entry: UkMealDatabaseEntry): MealNameSuggesti
     notes: `Typical portion from local UK meal database (${entry.sourceLabel}).`,
     sourceLabel: entry.sourceLabel,
   };
+}
+
+export function searchMealDatabaseSuggestions(
+  mealName: string,
+  limit = 4
+): MealNameSuggestion[] {
+  return searchUkMeals(mealName, limit).map(databaseEntryToSuggestion);
 }
 
 /** Check favourites, past logs, and the offline database before calling AI. */

@@ -29,9 +29,9 @@ export function ProgressBar({
     <div className="space-y-1">
       {(label || showValues) && (
         <div className="flex justify-between text-sm">
-          {label && <span className="text-slate-600">{label}</span>}
+          {label && <span className="text-slate-600 dark:text-slate-300">{label}</span>}
           {showValues && (
-            <span className="text-slate-400">
+            <span className="text-slate-400 dark:text-slate-500">
               {Math.round(value)}
               {unit} / {max}
               {unit}
@@ -39,7 +39,7 @@ export function ProgressBar({
           )}
         </div>
       )}
-      <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
+      <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden dark:bg-slate-800">
         <div
           className={cn('h-full rounded-full transition-all duration-500', colors[color])}
           style={{ width: `${pct}%` }}

@@ -11,8 +11,8 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 const variants = {
   primary: 'bg-teal-500 text-white hover:bg-teal-600 active:bg-teal-700',
   secondary: 'bg-sage-500 text-white hover:opacity-90',
-  outline: 'border-2 border-teal-500 text-teal-500 hover:bg-teal-50',
-  ghost: 'text-teal-500 hover:bg-teal-50',
+  outline: 'border-2 border-teal-500 text-teal-500 hover:bg-teal-50 dark:hover:bg-teal-500/10',
+  ghost: 'text-teal-500 hover:bg-teal-50 dark:hover:bg-teal-500/10',
   danger: 'bg-coral-500 text-white hover:opacity-90',
 };
 

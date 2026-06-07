@@ -3,15 +3,22 @@ import { Link } from 'react-router-dom';
 import { useApp } from '@/hooks/useAppData';
 import { generateId } from '@/services/storage';
 import {
+  getSuggestedNutritionTargets,
+  suggestedTargetsToProfileFields,
+} from '@/utils/nutritionTargets';
+import {
   exportAllDataJson,
   exportDailyCheckInsCsv,
   exportMealsCsv,
+  exportProfileDataJson,
   exportSymptomEpisodesCsv,
   exportWeightEntriesCsv,
 } from '@/services/export';
 import { SettingsSection } from '@/components/SettingsSection';
 import { QuickNavLinks } from '@/components/QuickNavLinks';
 import { SyncStatusBadge } from '@/components/SyncStatusBadge';
+import { AppUpdateCard } from '@/components/AppUpdateCard';
+import { ThemeSelector } from '@/components/ThemeSelector';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
@@ -53,7 +60,7 @@ const SEX_OPTIONS: NonNullable<Profile['sex']>[] = [
   'preferNotToSay',
 ];
 
-type DestructiveAction = 'clearDemo' | 'clearAll' | 'resetApp' | null;
+type DestructiveAction = 'clearActiveProfile' | 'clearDemo' | 'clearAll' | 'resetApp' | null;
 
 export function ProfileSettingsPage() {
   const {
@@ -83,7 +90,7 @@ export function ProfileSettingsPage() {
   const [syncLoading, setSyncLoading] = useState(false);
 
   const inputClass =
-    'w-full px-3 py-3 rounded-xl border border-slate-200 text-base focus:outline-none focus:ring-2 focus:ring-teal-500/30 min-h-[48px]';
+    'w-full px-3 py-3 rounded-xl border border-slate-200 bg-white text-slate-800 text-base focus:outline-none focus:ring-2 focus:ring-teal-500/30 min-h-[48px] dark:bg-slate-950 dark:border-slate-800 dark:text-slate-100';
 
   const updateProfileField = <K extends keyof Profile>(
     profileId: string,
@@ -98,18 +105,33 @@ export function ProfileSettingsPage() {
     }));
   };
 
+  const applySuggestedTargets = (profile: Profile, overrides: Partial<Profile> = {}) => {
+    const nextProfile = { ...profile, ...overrides };
+    const targetFields = suggestedTargetsToProfileFields(
+      getSuggestedNutritionTargets(nextProfile)
+    );
+
+    update((d) => ({
+      ...d,
+      profiles: d.profiles.map((p) =>
+        p.id === profile.id ? { ...p, ...overrides, ...targetFields } : p
+      ),
+    }));
+  };
+
   const createProfile = () => {
     if (!newName.trim()) return;
     const id = generateId();
-    const profile: Profile = {
+    const baseProfile: Profile = {
       id,
       name: newName.trim(),
       activityLevel: 'moderate',
       goalType: 'generalHealth',
       enabledModules: ['nutrition', 'weight', 'water', 'goals'],
-      dailyCalorieTarget: 2000,
-      proteinTarget: 100,
-      waterTarget: 2000,
+    };
+    const profile: Profile = {
+      ...baseProfile,
+      ...suggestedTargetsToProfileFields(getSuggestedNutritionTargets(baseProfile)),
     };
     update((d) => ({
       ...d,
@@ -134,7 +156,20 @@ export function ProfileSettingsPage() {
   };
 
   const handleDestructiveConfirm = () => {
-    if (destructiveAction === 'clearDemo' || destructiveAction === 'clearAll') {
+    if (destructiveAction === 'clearActiveProfile' && activeProfile) {
+      update((d) => ({
+        ...d,
+        meals: d.meals.filter((m) => m.profileId !== activeProfile.id),
+        issues: d.issues.filter((i) => i.profileId !== activeProfile.id),
+        symptomEpisodes: d.symptomEpisodes.filter((s) => s.profileId !== activeProfile.id),
+        dailyCheckIns: d.dailyCheckIns.filter((c) => c.profileId !== activeProfile.id),
+        weightEntries: d.weightEntries.filter((w) => w.profileId !== activeProfile.id),
+        waterEntries: d.waterEntries.filter((w) => w.profileId !== activeProfile.id),
+        goals: d.goals.filter((g) => g.profileId !== activeProfile.id),
+        favouriteMeals: d.favouriteMeals.filter((f) => f.profileId !== activeProfile.id),
+        savedFoods: d.savedFoods.filter((f) => f.profileId !== activeProfile.id),
+      }));
+    } else if (destructiveAction === 'clearDemo' || destructiveAction === 'clearAll') {
       clearDemoData();
     } else if (destructiveAction === 'resetApp') {
       resetApp();
@@ -147,6 +182,13 @@ export function ProfileSettingsPage() {
     Exclude<DestructiveAction, null>,
     { title: string; message: string; warning: string; confirmLabel: string }
   > = {
+    clearActiveProfile: {
+      title: 'Clear active profile data?',
+      message:
+        'This removes meals, symptoms, check-ins, weights, goals, favourites, and saved foods for the selected profile only. The profile itself remains.',
+      warning: 'This cannot be undone. Export this profile first if you want a backup.',
+      confirmLabel: 'Clear active profile data',
+    },
     clearDemo: {
       title: 'Clear demo data?',
       message:
@@ -210,12 +252,20 @@ export function ProfileSettingsPage() {
   const storageLabel = isSignedIn
     ? `Local + cloud (${syncMeta.household.name ?? 'household'})`
     : 'Local device only';
+  const activeProfileLabel = activeProfile?.name ?? 'selected profile';
+  const suggestedTargets = activeProfile
+    ? getSuggestedNutritionTargets(activeProfile)
+    : null;
 
   return (
     <div className="space-y-6 pb-4">
       <div>
         <h1 className="text-xl font-semibold text-slate-800">Settings</h1>
-        <p className="text-sm text-slate-400 mt-0.5">Profiles, export, and app preferences</p>
+        <p className="text-sm text-slate-400 mt-0.5">
+          {activeProfile
+            ? `Editing settings for ${activeProfile.name}`
+            : 'Profiles, export, and app preferences'}
+        </p>
       </div>
 
       <SettingsSection title="Quick navigation" description="Reach key areas from one place.">
@@ -223,8 +273,8 @@ export function ProfileSettingsPage() {
       </SettingsSection>
 
       <SettingsSection
-        title="Profile settings"
-        description="Switch profile or edit details for the active profile."
+        title={activeProfile ? `Profile settings for ${activeProfile.name}` : 'Profile settings'}
+        description="Switch profile or edit details for the selected person."
       >
         <div className="flex flex-wrap gap-2">
           {data.profiles.map((p) => (
@@ -372,11 +422,15 @@ export function ProfileSettingsPage() {
               </div>
 
               <div>
-                <label className="block text-xs text-slate-500 mb-1">Goal type</label>
+                <label className="block text-xs text-slate-500 mb-1">
+                  Goal type
+                </label>
                 <select
                   value={activeProfile.goalType}
                   onChange={(e) =>
-                    updateProfileField(activeProfile.id, 'goalType', e.target.value as GoalType)
+                    applySuggestedTargets(activeProfile, {
+                      goalType: e.target.value as GoalType,
+                    })
                   }
                   className={inputClass}
                 >
@@ -386,6 +440,9 @@ export function ProfileSettingsPage() {
                     </option>
                   ))}
                 </select>
+                <p className="text-[10px] text-slate-400 mt-1">
+                  Changing goal type updates nutrition targets automatically.
+                </p>
               </div>
 
               <div>
@@ -442,41 +499,72 @@ export function ProfileSettingsPage() {
 
       {activeProfile && (
         <SettingsSection
-          title="Nutrition targets"
-          description="Daily targets for the active profile."
+          title={`Nutrition targets for ${activeProfile.name}`}
+          description="Daily targets for this profile. Goal type sets sensible defaults; you can still edit them manually."
         >
-          <Card className="grid grid-cols-2 gap-3">
-            {[
-              { field: 'dailyCalorieTarget' as const, label: 'Calories (kcal/day)' },
-              { field: 'proteinTarget' as const, label: 'Protein (g/day)' },
-              { field: 'carbTarget' as const, label: 'Carbs (g/day)' },
-              { field: 'fatTarget' as const, label: 'Fat (g/day)' },
-              { field: 'fibreTarget' as const, label: 'Fibre (g/day)' },
-              { field: 'waterTarget' as const, label: 'Water (ml/day)' },
-            ].map(({ field, label }) => (
-              <div key={field}>
-                <label className="block text-xs text-slate-500 mb-1">{label}</label>
-                <input
-                  type="number"
-                  value={activeProfile[field] ?? ''}
-                  onChange={(e) =>
-                    updateProfileField(
-                      activeProfile.id,
-                      field,
-                      e.target.value === '' ? undefined : Number(e.target.value)
-                    )
-                  }
-                  className={inputClass}
-                />
+          <Card className="space-y-4">
+            {suggestedTargets && (
+              <div className="rounded-xl bg-slate-50 border border-slate-100 px-3 py-2.5 space-y-2">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-medium text-slate-700">
+                      Suggested for {GOAL_TYPE_LABELS[activeProfile.goalType]}
+                    </p>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      {suggestedTargets.dailyCalorieTarget} kcal · P{' '}
+                      {suggestedTargets.proteinTarget}g · C {suggestedTargets.carbTarget}g · F{' '}
+                      {suggestedTargets.fatTarget}g · Fibre {suggestedTargets.fibreTarget}g
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => applySuggestedTargets(activeProfile)}
+                    className="shrink-0"
+                  >
+                    Apply
+                  </Button>
+                </div>
+                <p className="text-[10px] text-slate-400">
+                  {suggestedTargets.calorieBasis} {suggestedTargets.macroBasis}
+                </p>
               </div>
-            ))}
+            )}
+
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { field: 'dailyCalorieTarget' as const, label: 'Calories (kcal/day)' },
+                { field: 'proteinTarget' as const, label: 'Protein (g/day)' },
+                { field: 'carbTarget' as const, label: 'Carbs (g/day)' },
+                { field: 'fatTarget' as const, label: 'Fat (g/day)' },
+                { field: 'fibreTarget' as const, label: 'Fibre (g/day)' },
+                { field: 'waterTarget' as const, label: 'Water (ml/day)' },
+              ].map(({ field, label }) => (
+                <div key={field}>
+                  <label className="block text-xs text-slate-500 mb-1">{label}</label>
+                  <input
+                    type="number"
+                    value={activeProfile[field] ?? ''}
+                    onChange={(e) =>
+                      updateProfileField(
+                        activeProfile.id,
+                        field,
+                        e.target.value === '' ? undefined : Number(e.target.value)
+                      )
+                    }
+                    className={inputClass}
+                  />
+                </div>
+              ))}
+            </div>
           </Card>
         </SettingsSection>
       )}
 
       <SettingsSection
-        title="Trigger categories"
-        description="Tags you can apply when logging meals to explore possible patterns — not confirmed causes."
+        title="Trigger tag reference"
+        description="Shared tag list available to every profile when logging meals — not confirmed causes."
       >
         <Card className="flex flex-wrap gap-2">
           {ALL_TRIGGER_TAGS.map((tag) => (
@@ -492,7 +580,7 @@ export function ProfileSettingsPage() {
 
       <SettingsSection
         title="Cloud sync & account"
-        description="Optional Supabase sync for household profiles across devices. Login is never required."
+        description="App-wide sync for all household profiles across devices. Login is never required."
       >
         <Card className="space-y-4">
           <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -629,8 +717,8 @@ export function ProfileSettingsPage() {
       </SettingsSection>
 
       <SettingsSection
-        title="Favourites & packaged foods"
-        description="Quick-add meals and offline barcode lookup."
+        title={`Favourites & packaged foods for ${activeProfileLabel}`}
+        description="Quick-add meals and saved barcode foods for the selected profile."
       >
         <Card className="space-y-3">
           <div className="flex justify-between text-sm">
@@ -678,32 +766,87 @@ export function ProfileSettingsPage() {
 
       <SettingsSection
         title="Data export"
-        description="Download a copy of your data. CSV files open in Excel."
+        description="Export the selected profile first, or export all profiles for a full household backup. CSV files open in Excel."
       >
-        <div className="grid gap-2">
-          <Button variant="outline" fullWidth onClick={() => exportAllDataJson(data)}>
-            Export all data as JSON
-          </Button>
-          <Button variant="outline" fullWidth onClick={() => exportMealsCsv(data)}>
-            Export meals as CSV
-          </Button>
-          <Button variant="outline" fullWidth onClick={() => exportSymptomEpisodesCsv(data)}>
-            Export symptom episodes as CSV
-          </Button>
-          <Button variant="outline" fullWidth onClick={() => exportDailyCheckInsCsv(data)}>
-            Export daily check-ins as CSV
-          </Button>
-          <Button variant="outline" fullWidth onClick={() => exportWeightEntriesCsv(data)}>
-            Export weight entries as CSV
-          </Button>
+        <div className="grid gap-3">
+          {activeProfile && (
+            <Card className="space-y-2">
+              <p className="text-xs font-medium text-slate-600">
+                {activeProfile.name} only
+              </p>
+              <Button
+                variant="outline"
+                fullWidth
+                onClick={() => exportProfileDataJson(data, activeProfile.id)}
+              >
+                Export {activeProfile.name} as JSON
+              </Button>
+              <Button
+                variant="outline"
+                fullWidth
+                onClick={() => exportMealsCsv(data, activeProfile.id)}
+              >
+                Export {activeProfile.name} meals CSV
+              </Button>
+              <Button
+                variant="outline"
+                fullWidth
+                onClick={() => exportSymptomEpisodesCsv(data, activeProfile.id)}
+              >
+                Export {activeProfile.name} symptoms CSV
+              </Button>
+              <Button
+                variant="outline"
+                fullWidth
+                onClick={() => exportDailyCheckInsCsv(data, activeProfile.id)}
+              >
+                Export {activeProfile.name} check-ins CSV
+              </Button>
+              <Button
+                variant="outline"
+                fullWidth
+                onClick={() => exportWeightEntriesCsv(data, activeProfile.id)}
+              >
+                Export {activeProfile.name} weights CSV
+              </Button>
+            </Card>
+          )}
+
+          <Card className="space-y-2">
+            <p className="text-xs font-medium text-slate-600">All profiles / household</p>
+            <Button variant="outline" fullWidth onClick={() => exportAllDataJson(data)}>
+              Export all data as JSON
+            </Button>
+            <Button variant="outline" fullWidth onClick={() => exportMealsCsv(data)}>
+              Export all meals CSV
+            </Button>
+            <Button variant="outline" fullWidth onClick={() => exportSymptomEpisodesCsv(data)}>
+              Export all symptom episodes CSV
+            </Button>
+            <Button variant="outline" fullWidth onClick={() => exportDailyCheckInsCsv(data)}>
+              Export all daily check-ins CSV
+            </Button>
+            <Button variant="outline" fullWidth onClick={() => exportWeightEntriesCsv(data)}>
+              Export all weight entries CSV
+            </Button>
+          </Card>
         </div>
       </SettingsSection>
 
       <SettingsSection
         title="Data management"
-        description="Destructive actions require confirmation."
+        description="Profile-specific and app-wide destructive actions require confirmation."
       >
         <div className="grid gap-2">
+          {activeProfile && (
+            <Button
+              variant="danger"
+              fullWidth
+              onClick={() => setDestructiveAction('clearActiveProfile')}
+            >
+              Clear {activeProfile.name} data only
+            </Button>
+          )}
           <Button variant="outline" fullWidth onClick={loadDemo}>
             Reload demo data
           </Button>
@@ -726,24 +869,28 @@ export function ProfileSettingsPage() {
       </SettingsSection>
 
       <SettingsSection title="App information">
-        <Card className="space-y-2 text-sm text-slate-600">
-          <div className="flex justify-between gap-4">
-            <span className="text-slate-400">App version</span>
-            <span className="font-medium text-slate-800">{APP_VERSION}</span>
-          </div>
-          <div className="flex justify-between gap-4">
-            <span className="text-slate-400">Storage</span>
-            <span className="font-medium text-slate-800 text-right max-w-[60%]">
-              {storageLabel}
-            </span>
-          </div>
-          <div className="flex justify-between gap-4">
-            <span className="text-slate-400">AI status</span>
-            <span className="font-medium text-slate-800 text-right max-w-[60%]">
-              {AI_STATUS_LABEL}
-            </span>
-          </div>
-        </Card>
+        <div className="space-y-3">
+          <ThemeSelector />
+          <AppUpdateCard />
+          <Card className="space-y-2 text-sm text-slate-600">
+            <div className="flex justify-between gap-4">
+              <span className="text-slate-400">App version</span>
+              <span className="font-medium text-slate-800">{APP_VERSION}</span>
+            </div>
+            <div className="flex justify-between gap-4">
+              <span className="text-slate-400">Storage</span>
+              <span className="font-medium text-slate-800 text-right max-w-[60%]">
+                {storageLabel}
+              </span>
+            </div>
+            <div className="flex justify-between gap-4">
+              <span className="text-slate-400">AI status</span>
+              <span className="font-medium text-slate-800 text-right max-w-[60%]">
+                {AI_STATUS_LABEL}
+              </span>
+            </div>
+          </Card>
+        </div>
       </SettingsSection>
 
       <ConfirmDialog

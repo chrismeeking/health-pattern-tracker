@@ -284,6 +284,13 @@ export function AddMealPage() {
 
   };
 
+  const quickSaveMealTemplate = (meal: Meal) => {
+    const mealValues = repeatMealFormValues(meal);
+    const newMeal = buildMeal(mealValues, activeProfile.id);
+    update((d) => ({ ...d, meals: [...d.meals, newMeal] }));
+    navigate('/meals');
+  };
+
 
 
   const saveAsFavourite = () => {
@@ -319,6 +326,11 @@ export function AddMealPage() {
         recentMeals={recentUnique.length ? recentUnique : getRecentMeals(profileMeals, 4)}
 
         onCopyMeal={(id) => navigate(`/add/meal?copy=${id}`, { replace: true })}
+
+        onQuickSaveMeal={(id) => {
+          const meal = profileMeals.find((m) => m.id === id);
+          if (meal) quickSaveMealTemplate(meal);
+        }}
 
         onRepeatYesterday={(type) => {
 

@@ -35,6 +35,8 @@ import { StatCard } from '@/components/StatCard';
 import { WeeklyProgressCard } from '@/components/WeeklyProgressCard';
 import { QuickNavLinks } from '@/components/QuickNavLinks';
 import { InstallAppPrompt } from '@/components/InstallAppPrompt';
+import { OnboardingPanel } from '@/components/OnboardingPanel';
+import { Icon } from '@/components/Icon';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 
@@ -42,11 +44,7 @@ export function HomePage() {
   const { data, activeProfile, update } = useApp();
 
   if (!activeProfile) {
-    return (
-      <div className="text-center py-12">
-        <p className="text-slate-500">No profile loaded. Check Settings.</p>
-      </div>
-    );
+    return <OnboardingPanel />;
   }
 
   const profileData = getProfileData(data, activeProfile.id);
@@ -99,10 +97,10 @@ export function HomePage() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-xl font-semibold text-slate-800">
+        <h1 className="text-xl font-semibold text-slate-800 dark:text-slate-100">
           Hello, {activeProfile.name}
         </h1>
-        <p className="text-sm text-slate-400">
+        <p className="text-sm text-slate-400 dark:text-slate-500">
           {new Date().toLocaleDateString('en-GB', {
             weekday: 'long',
             day: 'numeric',
@@ -113,15 +111,33 @@ export function HomePage() {
 
       <InstallAppPrompt />
 
+      <Card className="bg-gradient-to-br from-teal-700 to-slate-900 text-white border-0 shadow-lg dark:from-teal-800 dark:to-slate-950">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-[10px] uppercase tracking-wide text-teal-200 font-semibold">
+              Viewing profile
+            </p>
+            <p className="text-lg font-semibold mt-0.5">{activeProfile.name}</p>
+            <p className="text-xs text-slate-300 mt-1">
+              Goal: {activeProfile.goalType.replace(/([A-Z])/g, ' $1').toLowerCase()} ·
+              Target {activeProfile.dailyCalorieTarget ?? 0} kcal
+            </p>
+          </div>
+          <Link to="/profile" className="text-xs text-teal-100 shrink-0 rounded-full bg-white/10 px-3 py-1.5">
+            Switch/edit
+          </Link>
+        </div>
+      </Card>
+
       <section className="space-y-2">
-        <h2 className="text-sm font-medium text-slate-600">Quick links</h2>
+        <h2 className="text-sm font-medium text-slate-600 dark:text-slate-300">Quick links</h2>
         <QuickNavLinks />
       </section>
 
       {(showWeightModule || activeGoal || weeklyProgress.daysWithMeals > 0) && (
         <section className="space-y-3">
           <div className="flex justify-between items-center">
-            <h2 className="text-sm font-medium text-slate-600">Health progress</h2>
+            <h2 className="text-sm font-medium text-slate-600 dark:text-slate-300">Health progress</h2>
             <Link to="/health" className="text-xs text-teal-500">
               View all
             </Link>
@@ -131,7 +147,7 @@ export function HomePage() {
               <Link to="/health">
                 <StatCard
                   label="Current weight"
-                  value={weightSummary.latest != null ? `${weightSummary.latest} kg` : '—'}
+                  value={weightSummary.latest != null ? `${weightSummary.latest} kg` : 'Log'}
                   subtext={
                     weightSummary.weekChange != null
                       ? `${weightSummary.weekChange > 0 ? '+' : ''}${weightSummary.weekChange} kg this week`
@@ -145,7 +161,7 @@ export function HomePage() {
             <Link to="/health">
               <StatCard
                 label="Active goal"
-                value={activeGoal ? '1' : '0'}
+                value={activeGoal ? '1' : 'Start'}
                 subtext={
                   activeGoal
                     ? activeGoal.title.length > 40
@@ -168,7 +184,7 @@ export function HomePage() {
 
       {showHealth && (
         <section className="space-y-3">
-          <h2 className="text-sm font-medium text-slate-600">Health snapshot</h2>
+          <h2 className="text-sm font-medium text-slate-600 dark:text-slate-300">Health snapshot</h2>
           <div className="grid grid-cols-2 gap-3">
             <StatCard
               label="Days since severe episode"
@@ -282,9 +298,9 @@ export function HomePage() {
       )}
 
       {digestive && !showHealth && (
-        <Card className="border-dashed border-slate-200 bg-slate-50/80 space-y-1">
-          <p className="text-sm font-medium text-slate-600">Symptom & trigger tracking</p>
-          <p className="text-xs text-slate-400 leading-relaxed">
+        <Card className="border-dashed border-slate-200 bg-slate-50/80 space-y-1 dark:border-slate-700 dark:bg-slate-900/60">
+          <p className="text-sm font-medium text-slate-600 dark:text-slate-300">Symptom & trigger tracking</p>
+          <p className="text-xs text-slate-400 leading-relaxed dark:text-slate-500">
             Enable health issue tracking in Profile to log symptoms and check-ins.
           </p>
         </Card>
@@ -302,7 +318,7 @@ export function HomePage() {
       {recentMeals.length > 0 && (
         <section className="space-y-3">
           <div className="flex justify-between items-center">
-            <h2 className="text-sm font-medium text-slate-600">Recent meals</h2>
+            <h2 className="text-sm font-medium text-slate-600 dark:text-slate-300">Recent meals</h2>
             <Link to="/meals" className="text-xs text-teal-500">
               View all
             </Link>
@@ -311,6 +327,22 @@ export function HomePage() {
             <MealCard key={meal.id} meal={meal} showDate />
           ))}
         </section>
+      )}
+      {recentMeals.length === 0 && (
+        <Card className="border-dashed border-slate-200 bg-white/70 text-center space-y-3 dark:border-slate-700 dark:bg-slate-900/70">
+          <div className="mx-auto h-10 w-10 rounded-full bg-teal-50 text-teal-600 flex items-center justify-center dark:bg-teal-500/15 dark:text-teal-200">
+            <Icon name="meals" className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-slate-700 dark:text-slate-100">No meals logged yet</p>
+            <p className="text-xs text-slate-400 mt-1 dark:text-slate-500">
+              Add your first meal to start tracking calories and patterns for {activeProfile.name}.
+            </p>
+          </div>
+          <Link to="/add/meal">
+            <Button size="sm" variant="secondary">Add first meal</Button>
+          </Link>
+        </Card>
       )}
     </div>
   );
