@@ -5,7 +5,7 @@
  * The upstream file is newline-delimited Python dict literals (single quotes), not JSON.
  *
  * Run: npm run build:meals
- * Optional: node scripts/build-meal-database.mjs --limit=500
+ * Optional: node scripts/build-meal-database.mjs --limit=700
  */
 
 import { createWriteStream, mkdirSync } from 'node:fs';
@@ -23,7 +23,29 @@ const SOURCE_URL =
 const limitArg = process.argv.find((a) => a.startsWith('--limit'));
 const LIMIT = limitArg
   ? Number(limitArg.includes('=') ? limitArg.split('=')[1] : process.argv[process.argv.indexOf(limitArg) + 1])
-  : 450;
+  : 650;
+
+const PRIORITY_PATTERNS = [
+  /sausage\s+and\s+mash/i,
+  /bangers/i,
+  /toad\s+in\s+the\s+hole/i,
+  /fish\s+fingers/i,
+  /cottage\s+pie/i,
+  /shepherd/i,
+  /macaroni\s+cheese/i,
+  /bubble\s+and\s+squeak/i,
+  /pie\s+and\s+mash/i,
+  /gammon/i,
+  /full\s+english/i,
+  /roast\s+chicken/i,
+  /family\s+meal/i,
+  /\bbritish\b/i,
+  /comfort\s+food/i,
+];
+
+function isPriorityMeal(title) {
+  return PRIORITY_PATTERNS.some((pattern) => pattern.test(title));
+}
 
 /** Convert a Python literal (dict/list/str) line to JSON text. */
 function pythonLiteralToJson(text) {
@@ -164,7 +186,8 @@ async function main() {
   }
 
   const seen = new Set();
-  const meals = [];
+  const priorityMeals = [];
+  const regularMeals = [];
   let parsedLines = 0;
   let failedLines = 0;
 
@@ -205,7 +228,7 @@ async function main() {
     const id = `bbc-${page?.article?.id ?? slugify(title)}`;
     const serves = recipe?.serves ?? recipe?.servings;
 
-    meals.push({
+    const meal = {
       id,
       name: title,
       aliases: [],
@@ -225,10 +248,21 @@ async function main() {
       salt: Math.round((Number(nutrients.salt) || 0) * 100) / 100,
       ingredients: ingredients.slice(0, 8),
       triggerTags: inferTriggerTags(title, ingredients),
-    });
+    };
 
-    if (meals.length >= LIMIT) break;
+    if (isPriorityMeal(title)) {
+      priorityMeals.push(meal);
+    } else {
+      regularMeals.push(meal);
+    }
   }
+
+  const meals = [...priorityMeals];
+  for (const meal of regularMeals) {
+    if (meals.length >= LIMIT) break;
+    meals.push(meal);
+  }
+  meals.splice(LIMIT);
 
   meals.sort((a, b) => a.name.localeCompare(b.name));
 

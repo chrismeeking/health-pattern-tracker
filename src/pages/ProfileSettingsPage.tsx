@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useApp } from '@/hooks/useAppData';
-import { generateId } from '@/services/storage';
+import { generateId, getProfileData } from '@/services/storage';
 import {
   getSuggestedNutritionTargets,
   suggestedTargetsToProfileFields,
@@ -26,7 +26,6 @@ import {
   AI_STATUS_LABEL,
   ALL_TRIGGER_TAGS,
   APP_VERSION,
-  FOOD_LOOKUP_STATUS_LABEL,
   GOAL_TYPE_LABELS,
   MEDICAL_DISCLAIMER,
   TRIGGER_TAG_LABELS,
@@ -38,9 +37,11 @@ import {
 import { getSupabaseConfigLabel } from '@/services/sync/supabaseClient';
 import { getScannerStatusLabel } from '@/services/food/barcodeScanner';
 import { getFavouritesForProfile } from '@/services/food/favouriteMeals';
-import { getSavedFoodsForProfile } from '@/services/food/foodLookup';
+import { getLookupStatusLabel, getSavedFoodsForProfile } from '@/services/food/foodLookup';
 import { ModulePresetPicker } from '@/components/ModulePresetPicker';
-import { normalizeEnabledModules } from '@/utils/profileModules';
+import { hasModule, normalizeEnabledModules } from '@/utils/profileModules';
+import { getWeightSummary } from '@/utils/health';
+import { calculateBmi, getBmiCategory } from '@/utils/bmi';
 
 const GOAL_TYPES = Object.keys(GOAL_TYPE_LABELS) as GoalType[];
 const ACTIVITY_LEVELS: ActivityLevel[] = ['sedentary', 'light', 'moderate', 'active'];
@@ -243,6 +244,17 @@ export function ProfileSettingsPage() {
   const suggestedTargets = activeProfile
     ? getSuggestedNutritionTargets(activeProfile)
     : null;
+  const profileWeightSummary = activeProfile
+    ? getWeightSummary(getProfileData(data, activeProfile.id).weightEntries, activeProfile)
+    : null;
+  const profileBmi =
+    activeProfile &&
+    hasModule(activeProfile, 'weight') &&
+    profileWeightSummary?.latest != null &&
+    activeProfile.height != null
+      ? calculateBmi(profileWeightSummary.latest, activeProfile.height)
+      : null;
+  const profileBmiCategory = profileBmi != null ? getBmiCategory(profileBmi) : null;
 
   return (
     <div className="space-y-6 pb-4">
@@ -373,6 +385,19 @@ export function ProfileSettingsPage() {
                   />
                 </div>
               </div>
+
+              {profileBmi != null && profileBmiCategory && (
+                <div className="rounded-xl bg-slate-50 border border-slate-100 px-3 py-2.5 dark:bg-slate-900 dark:border-slate-800">
+                  <p className="text-xs font-medium text-slate-700 dark:text-slate-200">
+                    BMI {profileBmi} · {profileBmiCategory.label}
+                  </p>
+                  {profileBmiCategory.description && (
+                    <p className="text-[11px] text-slate-500 mt-0.5 dark:text-slate-400">
+                      {profileBmiCategory.description}
+                    </p>
+                  )}
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -717,7 +742,7 @@ export function ProfileSettingsPage() {
           <div className="flex justify-between text-sm gap-4">
             <span className="text-slate-500">Barcode lookup</span>
             <span className="font-medium text-slate-800 text-right text-xs">
-              {FOOD_LOOKUP_STATUS_LABEL}
+              {getLookupStatusLabel()}
             </span>
           </div>
           <div className="flex justify-between text-sm gap-4">

@@ -9,6 +9,7 @@ import {
   getWeightSummary,
   isDigestiveProfile,
 } from '@/utils/health';
+import { hasModule } from '@/utils/profileModules';
 import { WeightChart } from '@/components/WeightChart';
 import { GoalCard } from '@/components/GoalCard';
 import { WeeklyProgressCard } from '@/components/WeeklyProgressCard';
@@ -33,6 +34,7 @@ export function HealthPage() {
   const weightSummary = getWeightSummary(weights, activeProfile);
   const weeklyProgress = getWeeklyProgress(data, activeProfile.id);
   const showSymptoms = isDigestiveProfile(activeProfile);
+  const showWeightModule = hasModule(activeProfile, 'weight');
 
   const activeGoals = goals.filter((g) => g.status === 'active');
   const completedGoals = goals
@@ -110,6 +112,7 @@ export function HealthPage() {
         monthChange={weightSummary.monthChange}
         latestWeight={weightSummary.latest}
         targetWeight={weightSummary.target ?? undefined}
+        heightCm={showWeightModule ? activeProfile.height : undefined}
       />
 
       <WeeklyProgressCard progress={weeklyProgress} showSymptoms={showSymptoms} />

@@ -21,6 +21,7 @@ import {
   getWeeklyProgress,
   getWeightSummary,
 } from '@/utils/health';
+import { calculateBmi, getBmiCategory } from '@/utils/bmi';
 import {
   hasHealthTracking,
   hasModule,
@@ -90,6 +91,11 @@ export function HomePage() {
     : null;
 
   const weightSummary = getWeightSummary(profileData.weightEntries, activeProfile);
+  const bmi =
+    showWeight && weightSummary.latest != null && activeProfile.height != null
+      ? calculateBmi(weightSummary.latest, activeProfile.height)
+      : null;
+  const bmiCategory = bmi != null ? getBmiCategory(bmi) : null;
   const activeGoal = profileData.goals.find((g) => g.status === 'active');
   const weeklyProgress = getWeeklyProgress(data, activeProfile.id);
 
@@ -185,11 +191,13 @@ export function HomePage() {
                   label="Current weight"
                   value={weightSummary.latest != null ? `${weightSummary.latest} kg` : 'Log'}
                   subtext={
-                    weightSummary.weekChange != null
-                      ? `${weightSummary.weekChange > 0 ? '+' : ''}${weightSummary.weekChange} kg this week`
-                      : activeProfile.targetWeight
-                        ? `Target ${activeProfile.targetWeight} kg`
-                        : 'Log weight to track trend'
+                    bmi != null && bmiCategory
+                      ? `BMI ${bmi} · ${bmiCategory.label}`
+                      : weightSummary.weekChange != null
+                        ? `${weightSummary.weekChange > 0 ? '+' : ''}${weightSummary.weekChange} kg this week`
+                        : activeProfile.targetWeight
+                          ? `Target ${activeProfile.targetWeight} kg`
+                          : 'Log weight to track trend'
                   }
                 />
               </Link>

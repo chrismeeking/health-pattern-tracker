@@ -2,9 +2,11 @@
  * UK meal nutrition database for offline mock lookup and name suggestions.
  *
  * Curated entries: typical UK portions from public sources (brands, NHS, etc.).
+ * Home comfort entries: hand-curated UK home/pub meals (`curated-home-meals.json`).
  * Generated entries: BBC Good Food per-serving nutrition (`npm run build:meals`).
  */
 
+import homeMealsPayload from './meals/curated-home-meals.json' with { type: 'json' };
 import generatedMealsPayload from './meals/generated-meals.json' with { type: 'json' };
 
 export type MealConfidence = 'low' | 'medium' | 'high';
@@ -504,30 +506,45 @@ function normaliseSearch(text: string): string {
   return text.trim().toLowerCase().replace(/\s+/g, ' ');
 }
 
-type GeneratedMealRecord = Omit<UkMealDatabaseEntry, 'patterns'> & {
-  aliases: string[];
+type JsonMealRecord = Omit<UkMealDatabaseEntry, 'patterns'> & {
+  aliases?: string[];
 };
 
+function buildJsonMeals(
+  payload: { meals: Array<Omit<JsonMealRecord, 'confidence'> & { confidence: string }> }
+): UkMealDatabaseEntry[] {
+  return payload.meals.map((meal) => ({
+    ...meal,
+    confidence: meal.confidence as MealConfidence,
+    aliases: meal.aliases ?? [],
+    saturatedFat: meal.saturatedFat ?? Math.round((meal.fat || 0) * 0.4),
+  }));
+}
+
+const CURATED_HOME_MEALS = buildJsonMeals(homeMealsPayload);
+
 function buildGeneratedMeals(): UkMealDatabaseEntry[] {
-  const curatedNames = new Set(
-    CURATED_UK_MEALS.map((entry) => normaliseSearch(entry.name))
+  const reservedNames = new Set(
+    [...CURATED_UK_MEALS, ...CURATED_HOME_MEALS].map((entry) =>
+      normaliseSearch(entry.name)
+    )
   );
 
-  return (generatedMealsPayload.meals as GeneratedMealRecord[])
-    .filter((meal) => !curatedNames.has(normaliseSearch(meal.name)))
+  return (generatedMealsPayload.meals as JsonMealRecord[])
+    .filter((meal) => !reservedNames.has(normaliseSearch(meal.name)))
     .map((meal) => ({
       ...meal,
       aliases: meal.aliases ?? [],
-      saturatedFat:
-        meal.saturatedFat ?? Math.round((meal.fat || 0) * 0.4),
+      saturatedFat: meal.saturatedFat ?? Math.round((meal.fat || 0) * 0.4),
     }));
 }
 
 const GENERATED_UK_MEALS = buildGeneratedMeals();
 
-/** Curated UK meals first, then BBC Good Food recipes (no name clashes with curated). */
+/** Curated UK meals, home comfort meals, then BBC Good Food (deduped by name). */
 export const UK_MEAL_DATABASE: UkMealDatabaseEntry[] = [
   ...CURATED_UK_MEALS,
+  ...CURATED_HOME_MEALS,
   ...GENERATED_UK_MEALS,
 ];
 
@@ -623,5 +640,5 @@ export function inferDisplayName(text: string): string {
 }
 
 export function getDatabaseSourceSummary(): string {
-  return `${UK_MEAL_DATABASE.length} meals (${CURATED_UK_MEALS.length} curated UK + ${GENERATED_UK_MEALS.length} BBC Good Food recipes)`;
+  return `${UK_MEAL_DATABASE.length} meals (${CURATED_UK_MEALS.length} curated UK + ${CURATED_HOME_MEALS.length} home comfort + ${GENERATED_UK_MEALS.length} BBC Good Food recipes)`;
 }

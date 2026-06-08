@@ -1,4 +1,5 @@
 import type { WeightEntry } from '@/types';
+import { calculateBmi, getBmiCategory } from '@/utils/bmi';
 import { Card } from './Card';
 
 interface WeightChartProps {
@@ -7,6 +8,7 @@ interface WeightChartProps {
   monthChange: number | null;
   latestWeight: number | null;
   targetWeight?: number;
+  heightCm?: number;
 }
 
 export function WeightChart({
@@ -15,7 +17,14 @@ export function WeightChart({
   monthChange,
   latestWeight,
   targetWeight,
+  heightCm,
 }: WeightChartProps) {
+  const bmi =
+    latestWeight != null && heightCm != null
+      ? calculateBmi(latestWeight, heightCm)
+      : null;
+  const bmiCategory = bmi != null ? getBmiCategory(bmi) : null;
+
   const sorted = [...entries].sort(
     (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
   );
@@ -35,6 +44,16 @@ export function WeightChart({
           </p>
           {targetWeight != null && (
             <p className="text-sm text-slate-500">Target: {targetWeight} kg</p>
+          )}
+          {bmi != null && bmiCategory && (
+            <>
+              <p className="text-sm text-slate-500 mt-1">
+                BMI {bmi} · {bmiCategory.label}
+              </p>
+              {bmiCategory.description && (
+                <p className="text-xs text-slate-400 mt-0.5">{bmiCategory.description}</p>
+              )}
+            </>
           )}
         </div>
         <div className="text-right text-xs text-slate-500 space-y-0.5">
