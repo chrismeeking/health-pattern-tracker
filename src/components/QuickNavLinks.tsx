@@ -1,15 +1,44 @@
 import { Link } from 'react-router-dom';
+import type { Profile, ProfileModule } from '@/types';
 import { Card } from './Card';
 import { Icon, type IconName } from './Icon';
+import { hasHealthTracking, hasModule } from '@/utils/profileModules';
 
-const links = [
-  { to: '/health', label: 'Health', icon: 'health' as IconName, desc: 'Weight, goals & progress' },
-  { to: '/issues', label: 'Issues', icon: 'issues' as IconName, desc: 'Health patterns' },
-  { to: '/add/check-in', label: 'Daily check-in', icon: 'check' as IconName, desc: 'How are you today?' },
-  { to: '/add/symptom', label: 'Log symptom', icon: 'symptom' as IconName, desc: 'Record an episode' },
+interface QuickLink {
+  to: string;
+  label: string;
+  icon: IconName;
+  desc: string;
+  module?: ProfileModule | 'health';
+}
+
+const ALL_LINKS: QuickLink[] = [
+  { to: '/health', label: 'Health', icon: 'health', desc: 'Weight, goals & progress', module: 'goals' },
+  { to: '/issues', label: 'Issues', icon: 'issues', desc: 'Health patterns', module: 'health' },
+  { to: '/add/check-in', label: 'Daily check-in', icon: 'check', desc: 'How are you today?', module: 'health' },
+  { to: '/add/symptom', label: 'Log symptom', icon: 'symptom', desc: 'Record an episode', module: 'health' },
 ];
 
-export function QuickNavLinks() {
+interface QuickNavLinksProps {
+  profile: Profile;
+}
+
+export function QuickNavLinks({ profile }: QuickNavLinksProps) {
+  const links = ALL_LINKS.filter((link) => {
+    if (link.module === 'health') return hasHealthTracking(profile);
+    if (link.module === 'goals') {
+      return (
+        hasModule(profile, 'goals') ||
+        hasModule(profile, 'weight') ||
+        hasModule(profile, 'macros')
+      );
+    }
+    if (link.module) return hasModule(profile, link.module);
+    return true;
+  });
+
+  if (links.length === 0) return null;
+
   return (
     <div className="grid grid-cols-2 gap-2">
       {links.map((link) => (

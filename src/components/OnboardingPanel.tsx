@@ -5,14 +5,15 @@ import {
   getSuggestedNutritionTargets,
   suggestedTargetsToProfileFields,
 } from '@/utils/nutritionTargets';
+import { normalizeEnabledModules } from '@/utils/profileModules';
 import {
   GOAL_TYPE_LABELS,
-  MODULE_LABELS,
   type ActivityLevel,
   type GoalType,
   type Profile,
   type ProfileModule,
 } from '@/types';
+import { ModulePresetPicker } from './ModulePresetPicker';
 import { Button } from './Button';
 import { Card } from './Card';
 
@@ -20,7 +21,6 @@ const GOAL_TYPES = Object.keys(GOAL_TYPE_LABELS) as GoalType[];
 const ACTIVITY_LEVELS: ActivityLevel[] = ['sedentary', 'light', 'moderate', 'active'];
 
 const DEFAULT_MODULES: ProfileModule[] = ['nutrition', 'macros', 'weight', 'water', 'goals'];
-const OPTIONAL_MODULES: ProfileModule[] = ['healthIssues', 'digestive'];
 
 export function OnboardingPanel() {
   const { update, loadDemo } = useApp();
@@ -39,7 +39,7 @@ export function OnboardingPanel() {
       name: name.trim() || 'Your profile',
       activityLevel,
       goalType,
-      enabledModules: modules,
+      enabledModules: normalizeEnabledModules(modules),
       currentWeight: currentWeight ? Number(currentWeight) : undefined,
       targetWeight: targetWeight ? Number(targetWeight) : undefined,
       height: height ? Number(height) : undefined,
@@ -50,12 +50,6 @@ export function OnboardingPanel() {
 
   const suggestedTargets = getSuggestedNutritionTargets(previewProfile);
 
-  const toggleModule = (module: ProfileModule) => {
-    setModules((prev) =>
-      prev.includes(module) ? prev.filter((m) => m !== module) : [...prev, module]
-    );
-  };
-
   const createProfile = () => {
     const trimmedName = name.trim();
     if (!trimmedName) return;
@@ -65,6 +59,7 @@ export function OnboardingPanel() {
       ...previewProfile,
       id,
       name: trimmedName,
+      enabledModules: normalizeEnabledModules(modules),
     };
     const profile: Profile = {
       ...baseProfile,
@@ -90,26 +85,27 @@ export function OnboardingPanel() {
             Welcome
           </p>
           <h1 className="text-xl font-semibold text-teal-950 mt-1 dark:text-teal-50">
-            Set up your first profile
+            Set up your profile
           </h1>
           <p className="text-sm text-teal-800/80 mt-1 dark:text-teal-100/80">
-            Targets and logs are profile-specific, so each person can have their own goals,
-            meals, symptoms, and saved foods.
+            Each person gets their own dashboard — pick only the tracking areas you care about.
           </p>
         </div>
       </Card>
 
       <Card className="space-y-4">
         <div>
-          <label className="block text-xs text-slate-500 mb-1 dark:text-slate-400">Name</label>
+          <label className="block text-xs text-slate-500 mb-1 dark:text-slate-400">Your name</label>
           <input
             value={name}
             onChange={(event) => setName(event.target.value)}
-            placeholder="e.g. Chris"
+            placeholder="e.g. Alex"
             className={inputClass}
             autoFocus
           />
         </div>
+
+        <ModulePresetPicker modules={modules} onChange={setModules} />
 
         <div className="grid grid-cols-2 gap-3">
           <div>
@@ -148,7 +144,7 @@ export function OnboardingPanel() {
             inputMode="decimal"
             value={currentWeight}
             onChange={(event) => setCurrentWeight(event.target.value)}
-            placeholder="Current kg"
+            placeholder="Current kg (optional)"
             className={inputClass}
           />
           <input
@@ -156,7 +152,7 @@ export function OnboardingPanel() {
             inputMode="decimal"
             value={targetWeight}
             onChange={(event) => setTargetWeight(event.target.value)}
-            placeholder="Target kg"
+            placeholder="Target kg (optional)"
             className={inputClass}
           />
           <input
@@ -164,7 +160,7 @@ export function OnboardingPanel() {
             inputMode="numeric"
             value={height}
             onChange={(event) => setHeight(event.target.value)}
-            placeholder="Height cm"
+            placeholder="Height cm (optional)"
             className={inputClass}
           />
           <input
@@ -172,39 +168,21 @@ export function OnboardingPanel() {
             inputMode="numeric"
             value={age}
             onChange={(event) => setAge(event.target.value)}
-            placeholder="Age"
+            placeholder="Age (optional)"
             className={inputClass}
           />
         </div>
 
-        <div>
-          <p className="text-xs text-slate-500 mb-2 dark:text-slate-400">Optional modules</p>
-          <div className="flex flex-wrap gap-2">
-            {OPTIONAL_MODULES.map((module) => (
-              <button
-                key={module}
-                type="button"
-                onClick={() => toggleModule(module)}
-                className={`px-3 py-2 rounded-xl text-xs min-h-[36px] ${
-                  modules.includes(module)
-                    ? 'bg-teal-100 text-teal-700 dark:bg-teal-500/15 dark:text-teal-100'
-                    : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
-                }`}
-              >
-                {MODULE_LABELS[module]}
-              </button>
-            ))}
+        {previewProfile.enabledModules.includes('nutrition') && (
+          <div className="rounded-xl bg-slate-50 border border-slate-100 px-3 py-2 dark:bg-slate-950 dark:border-slate-800">
+            <p className="text-xs font-medium text-slate-700 dark:text-slate-100">Starting targets</p>
+            <p className="text-[11px] text-slate-500 mt-0.5 dark:text-slate-400">
+              {suggestedTargets.dailyCalorieTarget} kcal · P {suggestedTargets.proteinTarget}g ·
+              C {suggestedTargets.carbTarget}g · F {suggestedTargets.fatTarget}g · Fibre{' '}
+              {suggestedTargets.fibreTarget}g
+            </p>
           </div>
-        </div>
-
-        <div className="rounded-xl bg-slate-50 border border-slate-100 px-3 py-2 dark:bg-slate-950 dark:border-slate-800">
-          <p className="text-xs font-medium text-slate-700 dark:text-slate-100">Starting targets</p>
-          <p className="text-[11px] text-slate-500 mt-0.5 dark:text-slate-400">
-            {suggestedTargets.dailyCalorieTarget} kcal · P {suggestedTargets.proteinTarget}g ·
-            C {suggestedTargets.carbTarget}g · F {suggestedTargets.fatTarget}g · Fibre{' '}
-            {suggestedTargets.fibreTarget}g
-          </p>
-        </div>
+        )}
 
         <Button fullWidth size="lg" onClick={createProfile} disabled={!name.trim()}>
           Create profile

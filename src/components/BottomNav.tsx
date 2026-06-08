@@ -1,12 +1,20 @@
 import { NavLink, useLocation } from 'react-router-dom';
+import { useApp } from '@/hooks/useAppData';
 import { cn } from '@/utils/helpers';
+import { showInsightsNav } from '@/utils/profileModules';
 import { Icon, type IconName } from './Icon';
 
 const navItems = [
   { to: '/', label: 'Home', icon: 'home' as IconName, match: (path: string) => path === '/' },
   { to: '/meals', label: 'Meals', icon: 'meals' as IconName, match: (path: string) => path.startsWith('/meals') },
   { to: '/add', label: 'Add', icon: 'plus' as IconName, isAdd: true },
-  { to: '/insights', label: 'Insights', icon: 'insights' as IconName, match: (path: string) => path.startsWith('/insights') },
+  {
+    to: '/insights',
+    label: 'Insights',
+    icon: 'insights' as IconName,
+    match: (path: string) => path.startsWith('/insights'),
+    requiresInsights: true,
+  },
   {
     to: '/profile',
     label: 'Settings',
@@ -18,11 +26,17 @@ const navItems = [
 
 export function BottomNav() {
   const location = useLocation();
+  const { activeProfile } = useApp();
+  const insightsEnabled = activeProfile ? showInsightsNav(activeProfile) : false;
+
+  const visibleItems = navItems.filter(
+    (item) => !item.requiresInsights || insightsEnabled
+  );
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur border-t border-slate-200 z-50 pb-[env(safe-area-inset-bottom)] dark:bg-slate-950/95 dark:border-slate-800">
       <div className="max-w-lg mx-auto flex items-end justify-around px-1 pt-1 pb-1">
-        {navItems.map((item) => {
+        {visibleItems.map((item) => {
           if (item.isAdd) {
             const isActive = location.pathname.startsWith('/add');
             return (

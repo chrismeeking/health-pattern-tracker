@@ -29,7 +29,6 @@ import {
   FOOD_LOOKUP_STATUS_LABEL,
   GOAL_TYPE_LABELS,
   MEDICAL_DISCLAIMER,
-  MODULE_LABELS,
   TRIGGER_TAG_LABELS,
   type ActivityLevel,
   type GoalType,
@@ -40,16 +39,8 @@ import { getSupabaseConfigLabel } from '@/services/sync/supabaseClient';
 import { getScannerStatusLabel } from '@/services/food/barcodeScanner';
 import { getFavouritesForProfile } from '@/services/food/favouriteMeals';
 import { getSavedFoodsForProfile } from '@/services/food/foodLookup';
-
-const ALL_MODULES: ProfileModule[] = [
-  'nutrition',
-  'macros',
-  'weight',
-  'water',
-  'healthIssues',
-  'digestive',
-  'goals',
-];
+import { ModulePresetPicker } from '@/components/ModulePresetPicker';
+import { normalizeEnabledModules } from '@/utils/profileModules';
 
 const GOAL_TYPES = Object.keys(GOAL_TYPE_LABELS) as GoalType[];
 const ACTIVITY_LEVELS: ActivityLevel[] = ['sedentary', 'light', 'moderate', 'active'];
@@ -127,7 +118,7 @@ export function ProfileSettingsPage() {
       name: newName.trim(),
       activityLevel: 'moderate',
       goalType: 'generalHealth',
-      enabledModules: ['nutrition', 'weight', 'water', 'goals'],
+      enabledModules: ['nutrition', 'macros', 'weight', 'water', 'goals'],
     };
     const profile: Profile = {
       ...baseProfile,
@@ -142,16 +133,12 @@ export function ProfileSettingsPage() {
     setShowNew(false);
   };
 
-  const toggleModule = (profileId: string, mod: ProfileModule) => {
+  const setProfileModules = (profileId: string, modules: ProfileModule[]) => {
     update((d) => ({
       ...d,
-      profiles: d.profiles.map((p) => {
-        if (p.id !== profileId) return p;
-        const enabled = p.enabledModules.includes(mod)
-          ? p.enabledModules.filter((m) => m !== mod)
-          : [...p.enabledModules, mod];
-        return { ...p, enabledModules: enabled };
-      }),
+      profiles: d.profiles.map((p) =>
+        p.id === profileId ? { ...p, enabledModules: normalizeEnabledModules(modules) } : p
+      ),
     }));
   };
 
@@ -268,9 +255,14 @@ export function ProfileSettingsPage() {
         </p>
       </div>
 
-      <SettingsSection title="Quick navigation" description="Reach key areas from one place.">
-        <QuickNavLinks />
-      </SettingsSection>
+      {activeProfile && (
+        <SettingsSection
+          title="Quick navigation"
+          description="Shortcuts match this profile's enabled modules."
+        >
+          <QuickNavLinks profile={activeProfile} />
+        </SettingsSection>
+      )}
 
       <SettingsSection
         title={activeProfile ? `Profile settings for ${activeProfile.name}` : 'Profile settings'}
@@ -445,25 +437,10 @@ export function ProfileSettingsPage() {
                 </p>
               </div>
 
-              <div>
-                <label className="block text-xs text-slate-500 mb-2">Enabled modules</label>
-                <div className="flex flex-wrap gap-2">
-                  {ALL_MODULES.map((mod) => (
-                    <button
-                      key={mod}
-                      type="button"
-                      onClick={() => toggleModule(activeProfile.id, mod)}
-                      className={`text-xs px-3 py-2 rounded-full min-h-[36px] ${
-                        activeProfile.enabledModules.includes(mod)
-                          ? 'bg-teal-100 text-teal-700'
-                          : 'bg-slate-100 text-slate-400'
-                      }`}
-                    >
-                      {MODULE_LABELS[mod]}
-                    </button>
-                  ))}
-                </div>
-              </div>
+              <ModulePresetPicker
+                modules={activeProfile.enabledModules}
+                onChange={(modules) => setProfileModules(activeProfile.id, modules)}
+              />
             </div>
           </Card>
         ) : (

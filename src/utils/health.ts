@@ -141,7 +141,7 @@ export function getWeeklyProgress(data: AppData, profileId: string): WeeklyProgr
   };
 }
 
-const CHRIS_SUGGESTIONS: SuggestedGoal[] = [
+const DIGESTIVE_GOAL_SUGGESTIONS: SuggestedGoal[] = [
   {
     title: 'Choose one non-tomato evening meal this week',
     description: 'A small experiment to observe how you feel.',
@@ -186,7 +186,7 @@ const CHRIS_SUGGESTIONS: SuggestedGoal[] = [
   },
 ];
 
-const JENNY_SUGGESTIONS: SuggestedGoal[] = [
+const NUTRITION_GOAL_SUGGESTIONS: SuggestedGoal[] = [
   {
     title: 'Increase protein by 10g per day',
     description: 'A small daily improvement toward your protein target.',
@@ -229,7 +229,7 @@ export function getSuggestedGoals(profile: Profile, existingTitles: string[]): S
   const isDigestive =
     profile.enabledModules.includes('digestive') ||
     profile.enabledModules.includes('healthIssues');
-  const pool = isDigestive ? CHRIS_SUGGESTIONS : JENNY_SUGGESTIONS;
+  const pool = isDigestive ? DIGESTIVE_GOAL_SUGGESTIONS : NUTRITION_GOAL_SUGGESTIONS;
 
   return pool
     .filter((s) => !existingTitles.some((t) => t.toLowerCase() === s.title.toLowerCase()))

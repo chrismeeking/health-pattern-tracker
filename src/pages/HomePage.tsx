@@ -4,8 +4,6 @@ import { generateId, getProfileData } from '@/services/storage';
 import {
   getTodayNutrition,
   getTodayWater,
-  hasModule,
-  isDigestiveProfile,
   isMacroFocusedProfile,
 } from '@/utils/nutrition';
 import {
@@ -18,10 +16,18 @@ import {
   getToleratedFoods,
   getTopInsight,
 } from '@/services/insightEngine';
+import { getTopProgressInsight } from '@/services/progressInsightEngine';
 import {
   getWeeklyProgress,
   getWeightSummary,
 } from '@/utils/health';
+import {
+  hasHealthTracking,
+  hasModule,
+  hasPatternInsights,
+  hasProgressInsights,
+  showInsightsNav,
+} from '@/utils/profileModules';
 import { ConfidenceBadge } from '@/components/ConfidenceBadge';
 import { InsightCard } from '@/components/InsightCard';
 import { nowISO } from '@/utils/helpers';
@@ -54,9 +60,13 @@ export function HomePage() {
     .sort((a, b) => new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime())
     .slice(0, 3);
 
+  const showNutrition = hasModule(activeProfile, 'nutrition');
+  const showMacros = hasModule(activeProfile, 'macros');
+  const showWater = hasModule(activeProfile, 'water');
+  const showWeight = hasModule(activeProfile, 'weight');
+  const showGoals = hasModule(activeProfile, 'goals');
+  const showHealth = hasHealthTracking(activeProfile);
   const macroFocused = isMacroFocusedProfile(activeProfile);
-  const digestive = isDigestiveProfile(activeProfile);
-  const showHealth = hasModule(activeProfile.enabledModules, 'healthIssues') || digestive;
 
   const daysSinceSevere = getDaysSinceSevereEpisode(profileData.symptomEpisodes);
   const lastCheckIn = getLastCheckInStatus(profileData.dailyCheckIns);
@@ -72,12 +82,21 @@ export function HomePage() {
   const toleratedFoods = showHealth
     ? getToleratedFoods(data, activeProfile.id).slice(0, 3)
     : [];
-  const topInsight = showHealth ? getTopInsight(data, activeProfile.id) : null;
+  const topPatternInsight = hasPatternInsights(activeProfile)
+    ? getTopInsight(data, activeProfile.id)
+    : null;
+  const topProgressInsight = hasProgressInsights(activeProfile)
+    ? getTopProgressInsight(data, activeProfile)
+    : null;
 
   const weightSummary = getWeightSummary(profileData.weightEntries, activeProfile);
   const activeGoal = profileData.goals.find((g) => g.status === 'active');
   const weeklyProgress = getWeeklyProgress(data, activeProfile.id);
-  const showWeightModule = hasModule(activeProfile.enabledModules, 'weight');
+
+  const showHealthProgress =
+    showWeight ||
+    showGoals ||
+    (weeklyProgress.daysWithMeals > 0 && (showNutrition || showMacros));
 
   const addWater = (amount: number) => {
     update((d) => ({
@@ -119,22 +138,39 @@ export function HomePage() {
             </p>
             <p className="text-lg font-semibold mt-0.5">{activeProfile.name}</p>
             <p className="text-xs text-slate-300 mt-1">
-              Goal: {activeProfile.goalType.replace(/([A-Z])/g, ' $1').toLowerCase()} ·
-              Target {activeProfile.dailyCalorieTarget ?? 0} kcal
+              {showNutrition && activeProfile.dailyCalorieTarget
+                ? `Target ${activeProfile.dailyCalorieTarget} kcal`
+                : 'Custom tracking profile'}
+              {showHealth && showNutrition ? ' · ' : ''}
+              {showHealth ? 'Health patterns on' : ''}
             </p>
           </div>
-          <Link to="/profile" className="text-xs text-teal-100 shrink-0 rounded-full bg-white/10 px-3 py-1.5">
+          <Link
+            to="/profile"
+            className="text-xs text-teal-100 shrink-0 rounded-full bg-white/10 px-3 py-1.5"
+          >
             Switch/edit
           </Link>
         </div>
       </Card>
 
-      <section className="space-y-2">
-        <h2 className="text-sm font-medium text-slate-600 dark:text-slate-300">Quick links</h2>
-        <QuickNavLinks />
-      </section>
+      {topProgressInsight && (
+        <section className="space-y-2">
+          <div className="flex justify-between items-center">
+            <h2 className="text-sm font-medium text-slate-600 dark:text-slate-300">This week</h2>
+            {showInsightsNav(activeProfile) && (
+              <Link to="/insights" className="text-xs text-teal-500">
+                All insights
+              </Link>
+            )}
+          </div>
+          <InsightCard insight={topProgressInsight} />
+        </section>
+      )}
 
-      {(showWeightModule || activeGoal || weeklyProgress.daysWithMeals > 0) && (
+      <QuickNavLinks profile={activeProfile} />
+
+      {showHealthProgress && (
         <section className="space-y-3">
           <div className="flex justify-between items-center">
             <h2 className="text-sm font-medium text-slate-600 dark:text-slate-300">Health progress</h2>
@@ -143,7 +179,7 @@ export function HomePage() {
             </Link>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            {showWeightModule && (
+            {showWeight && (
               <Link to="/health">
                 <StatCard
                   label="Current weight"
@@ -158,27 +194,31 @@ export function HomePage() {
                 />
               </Link>
             )}
+            {showGoals && (
+              <Link to="/health">
+                <StatCard
+                  label="Active goal"
+                  value={activeGoal ? '1' : 'Start'}
+                  subtext={
+                    activeGoal
+                      ? activeGoal.title.length > 40
+                        ? `${activeGoal.title.slice(0, 40)}…`
+                        : activeGoal.title
+                      : 'Try a small experiment'
+                  }
+                />
+              </Link>
+            )}
+          </div>
+          {(showNutrition || showMacros || showGoals) && (
             <Link to="/health">
-              <StatCard
-                label="Active goal"
-                value={activeGoal ? '1' : 'Start'}
-                subtext={
-                  activeGoal
-                    ? activeGoal.title.length > 40
-                      ? `${activeGoal.title.slice(0, 40)}…`
-                      : activeGoal.title
-                    : 'Try a small experiment'
-                }
+              <WeeklyProgressCard
+                progress={weeklyProgress}
+                showSymptoms={showHealth}
+                compact
               />
             </Link>
-          </div>
-          <Link to="/health">
-            <WeeklyProgressCard
-              progress={weeklyProgress}
-              showSymptoms={showHealth}
-              compact
-            />
-          </Link>
+          )}
         </section>
       )}
 
@@ -238,18 +278,20 @@ export function HomePage() {
             </div>
           )}
 
-          {(suspectedTriggers.length > 0 || toleratedFoods.length > 0 || topInsight) && (
+          {(suspectedTriggers.length > 0 || toleratedFoods.length > 0 || topPatternInsight) && (
             <div className="space-y-3">
               <div className="flex justify-between items-center">
                 <h3 className="text-xs font-medium text-slate-500 uppercase tracking-wide">
                   Pattern snapshot
                 </h3>
-                <Link to="/insights" className="text-xs text-teal-500">
-                  All insights
-                </Link>
+                {showInsightsNav(activeProfile) && (
+                  <Link to="/insights" className="text-xs text-teal-500">
+                    All insights
+                  </Link>
+                )}
               </div>
 
-              {topInsight && <InsightCard insight={topInsight} />}
+              {topPatternInsight && <InsightCard insight={topPatternInsight} />}
 
               {suspectedTriggers.length > 0 && (
                 <Card className="space-y-2">
@@ -279,17 +321,18 @@ export function HomePage() {
         </section>
       )}
 
-      <DailyNutritionSummary totals={todayTotals} profile={activeProfile} />
-
-      {macroFocused ? (
-        <MacroSummary totals={todayTotals} profile={activeProfile} />
-      ) : (
-        activeProfile.enabledModules.includes('macros') && (
-          <MacroSummary totals={todayTotals} profile={activeProfile} compact />
-        )
+      {showNutrition && (
+        <DailyNutritionSummary totals={todayTotals} profile={activeProfile} />
       )}
 
-      {activeProfile.enabledModules.includes('water') && (
+      {showMacros &&
+        (macroFocused ? (
+          <MacroSummary totals={todayTotals} profile={activeProfile} />
+        ) : (
+          <MacroSummary totals={todayTotals} profile={activeProfile} compact />
+        ))}
+
+      {showWater && (
         <WaterTracker
           currentMl={todayWater}
           targetMl={activeProfile.waterTarget}
@@ -297,22 +340,19 @@ export function HomePage() {
         />
       )}
 
-      {digestive && !showHealth && (
-        <Card className="border-dashed border-slate-200 bg-slate-50/80 space-y-1 dark:border-slate-700 dark:bg-slate-900/60">
-          <p className="text-sm font-medium text-slate-600 dark:text-slate-300">Symptom & trigger tracking</p>
-          <p className="text-xs text-slate-400 leading-relaxed dark:text-slate-500">
-            Enable health issue tracking in Profile to log symptoms and check-ins.
-          </p>
-        </Card>
-      )}
-
       <div className="flex gap-2">
         <Link to="/add/meal" className="flex-1">
-          <Button fullWidth size="sm">Add meal</Button>
+          <Button fullWidth size="sm">
+            Add meal
+          </Button>
         </Link>
-        <Link to="/add/water" className="flex-1">
-          <Button variant="outline" fullWidth size="sm">Add water</Button>
-        </Link>
+        {showWater && (
+          <Link to="/add/water" className="flex-1">
+            <Button variant="outline" fullWidth size="sm">
+              Add water
+            </Button>
+          </Link>
+        )}
       </div>
 
       {recentMeals.length > 0 && (
@@ -336,11 +376,13 @@ export function HomePage() {
           <div>
             <p className="text-sm font-medium text-slate-700 dark:text-slate-100">No meals logged yet</p>
             <p className="text-xs text-slate-400 mt-1 dark:text-slate-500">
-              Add your first meal to start tracking calories and patterns for {activeProfile.name}.
+              Add your first meal to start tracking for {activeProfile.name}.
             </p>
           </div>
           <Link to="/add/meal">
-            <Button size="sm" variant="secondary">Add first meal</Button>
+            <Button size="sm" variant="secondary">
+              Add first meal
+            </Button>
           </Link>
         </Card>
       )}
