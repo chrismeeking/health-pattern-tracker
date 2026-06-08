@@ -11,6 +11,7 @@ import type {
   WaterEntry,
   WeightEntry,
 } from '@/types';
+import { migrateAppData } from '@/utils/profileModules';
 import { getSupabaseClient, isSupabaseConfigured } from './supabaseClient';
 import {
   DEFAULT_SYNC_META,
@@ -622,7 +623,7 @@ export async function pullFromCloud(meta: SyncMeta): Promise<PullResult> {
       targetWeight: row.target_weight ?? undefined,
       activityLevel: row.activity_level,
       goalType: row.goal_type,
-      enabledModules: row.enabled_modules ?? [],
+      enabledModules: Array.isArray(row.enabled_modules) ? row.enabled_modules : [],
       dailyCalorieTarget: row.daily_calorie_target ?? undefined,
       proteinTarget: row.protein_target ?? undefined,
       carbTarget: row.carb_target ?? undefined,
@@ -748,7 +749,7 @@ export async function pullFromCloud(meta: SyncMeta): Promise<PullResult> {
       demoLoaded: false,
     };
 
-    return { ok: true, data: remoteData };
+    return { ok: true, data: migrateAppData(remoteData) };
   } catch (err) {
     return {
       ok: false,

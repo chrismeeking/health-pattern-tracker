@@ -5,6 +5,7 @@ import { Icon, type IconName } from './Icon';
 import { hasHealthTracking, hasModule } from '@/utils/profileModules';
 
 interface QuickLink {
+  id: string;
   to: string;
   label: string;
   icon: IconName;
@@ -13,10 +14,12 @@ interface QuickLink {
 }
 
 const ALL_LINKS: QuickLink[] = [
-  { to: '/health', label: 'Health', icon: 'health', desc: 'Weight, goals & progress', module: 'goals' },
-  { to: '/issues', label: 'Issues', icon: 'issues', desc: 'Health patterns', module: 'health' },
-  { to: '/add/check-in', label: 'Daily check-in', icon: 'check', desc: 'How are you today?', module: 'health' },
-  { to: '/add/symptom', label: 'Log symptom', icon: 'symptom', desc: 'Record an episode', module: 'health' },
+  { id: 'weight', to: '/health', label: 'Weight', icon: 'health', desc: 'Weight, BMI & goals', module: 'weight' },
+  { id: 'log-weight', to: '/add/weight', label: 'Log weight', icon: 'check', desc: "Record today's weight", module: 'weight' },
+  { id: 'goals', to: '/health', label: 'Goals', icon: 'health', desc: 'Goals & weekly progress', module: 'goals' },
+  { id: 'issues', to: '/issues', label: 'Issues', icon: 'issues', desc: 'Health patterns', module: 'health' },
+  { id: 'check-in', to: '/add/check-in', label: 'Daily check-in', icon: 'check', desc: 'How are you today?', module: 'health' },
+  { id: 'symptom', to: '/add/symptom', label: 'Log symptom', icon: 'symptom', desc: 'Record an episode', module: 'health' },
 ];
 
 interface QuickNavLinksProps {
@@ -27,11 +30,7 @@ export function QuickNavLinks({ profile }: QuickNavLinksProps) {
   const links = ALL_LINKS.filter((link) => {
     if (link.module === 'health') return hasHealthTracking(profile);
     if (link.module === 'goals') {
-      return (
-        hasModule(profile, 'goals') ||
-        hasModule(profile, 'weight') ||
-        hasModule(profile, 'macros')
-      );
+      return hasModule(profile, 'goals');
     }
     if (link.module) return hasModule(profile, link.module);
     return true;
@@ -42,7 +41,7 @@ export function QuickNavLinks({ profile }: QuickNavLinksProps) {
   return (
     <div className="grid grid-cols-2 gap-2">
       {links.map((link) => (
-        <Link key={link.to} to={link.to}>
+        <Link key={link.id} to={link.to}>
           <Card className="h-full p-3 space-y-1 active:scale-[0.99] transition-transform min-h-[72px]">
             <div className="flex items-center gap-2">
               <span className="h-9 w-9 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center dark:bg-teal-500/15 dark:text-teal-200">

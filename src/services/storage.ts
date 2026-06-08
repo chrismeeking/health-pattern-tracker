@@ -1,4 +1,5 @@
 import type { AppData } from '@/types';
+import { migrateAppData } from '@/utils/profileModules';
 
 const STORAGE_KEY = 'health-pattern-tracker-data';
 
@@ -22,12 +23,17 @@ export function loadData(): AppData {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return { ...defaultData };
     const parsed = JSON.parse(raw) as AppData;
-    return {
+    const loaded: AppData = {
       ...defaultData,
       ...parsed,
       favouriteMeals: parsed.favouriteMeals ?? [],
       savedFoods: parsed.savedFoods ?? [],
     };
+    const migrated = migrateAppData(loaded);
+    if (migrated !== loaded) {
+      saveData(migrated);
+    }
+    return migrated;
   } catch {
     return { ...defaultData };
   }
