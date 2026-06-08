@@ -116,14 +116,14 @@ export function HealthPage() {
 
       <section className="space-y-3">
         <div className="flex justify-between items-center">
-          <h2 className="text-sm font-medium text-slate-600">Active goals</h2>
+          <h2 className="text-sm font-medium text-slate-600">Active health actions</h2>
           <Link to="/health/goals/new" className="text-xs text-teal-500">
-            + New goal
+            + New action
           </Link>
         </div>
         {activeGoals.length === 0 ? (
           <Card className="text-sm text-slate-400 text-center py-6">
-            No active goals. Try a small experiment below.
+            No active actions. Try a small experiment below.
           </Card>
         ) : (
           activeGoals.map((goal) => (
@@ -140,7 +140,7 @@ export function HealthPage() {
 
       {completedGoals.length > 0 && (
         <section className="space-y-3">
-          <h2 className="text-sm font-medium text-slate-600">Completed goals</h2>
+          <h2 className="text-sm font-medium text-slate-600">Completed actions</h2>
           {completedGoals.map((goal) => (
             <GoalCard
               key={goal.id}
@@ -153,7 +153,7 @@ export function HealthPage() {
       )}
 
       <section className="space-y-3">
-        <h2 className="text-sm font-medium text-slate-600">Suggested small goals</h2>
+        <h2 className="text-sm font-medium text-slate-600">Suggested health actions</h2>
         <p className="text-xs text-slate-400">
           Gentle experiments tailored to your profile — pick one that feels doable.
         </p>
@@ -164,7 +164,7 @@ export function HealthPage() {
               <p className="text-xs text-slate-500 mt-0.5">{s.description}</p>
             </div>
             <Button size="sm" variant="secondary" onClick={() => addSuggestedGoal(s)}>
-              Try this experiment
+              Add this action
             </Button>
           </Card>
         ))}
