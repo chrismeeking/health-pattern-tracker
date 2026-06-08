@@ -41,7 +41,7 @@ export function SavedFoodsPage() {
             Personal and shared barcode foods for {activeProfile.name}
           </p>
         </div>
-        <Link to="/add/meal/scan">
+        <Link to="/add/meal/scan?from=saved">
           <Button size="sm" variant="outline">
             Scan
           </Button>

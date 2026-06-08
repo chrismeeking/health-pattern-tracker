@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp } from '@/hooks/useAppData';
-import { generateId } from '@/services/storage';
 import {
   createCustomFood,
   foodItemToMealFormValues,
@@ -18,14 +17,21 @@ import {
   scanBarcodeFromCamera,
 } from '@/services/food/barcodeScanner';
 import { nowISO } from '@/utils/helpers';
-import type { FoodItem, Meal } from '@/types';
+import type { FoodItem } from '@/types';
+import type { MealFormValues } from '@/components/MealForm';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
+
+type ScanReturnTarget = 'meal' | 'saved';
 
 export function ScanBarcodePage() {
   const { data, activeProfile, update } = useApp();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const videoRef = useRef<HTMLVideoElement>(null);
+
+  const returnTarget = (searchParams.get('from') as ScanReturnTarget | null) ?? 'meal';
+  const returnPath = returnTarget === 'saved' ? '/saved-foods' : '/add/meal';
 
   const [barcode, setBarcode] = useState('');
   const [scanning, setScanning] = useState(false);
@@ -134,38 +140,25 @@ export function ScanBarcodePage() {
     }
   };
 
-  const saveMeal = () => {
-    if (!foodItem) return;
-    cacheLookupResult(foodItem);
+  const getScaledFormValues = (): Partial<MealFormValues> | null => {
+    if (!foodItem) return null;
     const scaled =
       servingMode === 'default'
         ? scaleFoodNutrition(foodItem, 'portions', 1)
         : scaleFoodNutrition(foodItem, servingMode, servingAmount);
-    const formValues = foodItemToMealFormValues(foodItem, scaled);
-    const now = nowISO();
-    const meal: Meal = {
-      id: generateId(),
-      profileId: activeProfile.id,
-      dateTime: now,
-      mealType: formValues.mealType,
-      mealName: formValues.mealName,
-      source: 'packaged',
-      calories: formValues.calories,
-      protein: formValues.protein,
-      carbs: formValues.carbs,
-      fat: formValues.fat,
-      saturatedFat: formValues.saturatedFat || undefined,
-      fibre: formValues.fibre,
-      sugar: formValues.sugar,
-      salt: formValues.salt,
-      portionSize: formValues.portionSize,
-      triggerTags: formValues.triggerTags,
-      notes: formValues.notes,
-      createdAt: now,
-      updatedAt: now,
-    };
-    update((d) => ({ ...d, meals: [...d.meals, meal] }));
-    navigate('/meals');
+    return foodItemToMealFormValues(foodItem, scaled);
+  };
+
+  const applyToMealForm = () => {
+    const formValues = getScaledFormValues();
+    if (!formValues) return;
+    cacheLookupResult(foodItem!);
+    navigate(returnPath, {
+      state: {
+        prefilled: formValues,
+        fromBarcode: true,
+      },
+    });
   };
 
   const saveCustomAndUse = () => {
@@ -195,12 +188,17 @@ export function ScanBarcodePage() {
       : scaleFoodNutrition(foodItem, servingMode, servingAmount));
 
   const inputClass =
-    'w-full px-3 py-3 rounded-xl border border-slate-200 text-base focus:outline-none focus:ring-2 focus:ring-teal-500/30';
+    'w-full px-3 py-3 rounded-xl border border-slate-200 text-base focus:outline-none focus:ring-2 focus:ring-teal-500/30 dark:bg-slate-950 dark:border-slate-800 dark:text-slate-100';
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold text-slate-800">Scan barcode</h1>
-      <p className="text-sm text-slate-500">{getScannerStatusLabel()}</p>
+      <div>
+        <h1 className="text-xl font-semibold text-slate-800 dark:text-slate-100">Scan barcode</h1>
+        <p className="text-sm text-slate-500 mt-0.5">
+          Packaged food lookup — you&apos;ll review on the meal form before saving.
+        </p>
+      </div>
+      <p className="text-xs text-slate-400">{getScannerStatusLabel()}</p>
 
       <Card className="space-y-3 overflow-hidden">
         <div className="relative overflow-hidden rounded-xl bg-slate-900">
@@ -257,7 +255,7 @@ export function ScanBarcodePage() {
 
       {showManualSave && (
         <Card className="space-y-3">
-          <p className="text-sm text-slate-600">Save as custom food and enter details manually.</p>
+          <p className="text-sm text-slate-600">Save as custom food and enter details on the meal form.</p>
           <input
             type="text"
             value={manualName}
@@ -266,7 +264,7 @@ export function ScanBarcodePage() {
             className={inputClass}
           />
           <Button fullWidth variant="secondary" onClick={saveCustomAndUse}>
-            Save &amp; add manually
+            Save &amp; continue to meal form
           </Button>
         </Card>
       )}
@@ -316,28 +314,14 @@ export function ScanBarcodePage() {
             )}
           </div>
 
-          <Button fullWidth onClick={saveMeal}>
-            Add to meal log
-          </Button>
-          <Button
-            variant="outline"
-            fullWidth
-            onClick={() => {
-              cacheLookupResult(foodItem);
-              navigate('/add/meal', {
-                state: {
-                  prefilled: foodItemToMealFormValues(foodItem, scaledPreview),
-                },
-              });
-            }}
-          >
-            Edit before saving
+          <Button fullWidth onClick={applyToMealForm}>
+            Continue to meal form
           </Button>
         </Card>
       )}
 
-      <Button variant="ghost" fullWidth onClick={() => navigate('/add/meal')}>
-        Manual meal entry
+      <Button variant="ghost" fullWidth onClick={() => navigate(returnPath)}>
+        {returnTarget === 'saved' ? 'Back to saved foods' : 'Back to add meal'}
       </Button>
     </div>
   );

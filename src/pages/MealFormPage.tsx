@@ -28,8 +28,6 @@ import { nowISO } from '@/utils/helpers';
 
 import { MealForm, mealToFormValues, type MealFormValues } from '@/components/MealForm';
 
-import { MealAiAnalysisPanel } from '@/components/MealAiAnalysisPanel';
-
 import { MealQuickAddPanel } from '@/components/MealQuickAddPanel';
 
 import { Button } from '@/components/Button';
@@ -176,9 +174,14 @@ export function AddMealPage() {
 
 
 
-  const prefilledFromState = (location.state as { prefilled?: Partial<MealFormValues> } | null)
+  const locationState = location.state as {
+    prefilled?: Partial<MealFormValues>;
+    fromBarcode?: boolean;
+  } | null;
 
-    ?.prefilled;
+  const prefilledFromState = locationState?.prefilled;
+
+  const fromBarcode = locationState?.fromBarcode ?? false;
 
 
 
@@ -234,11 +237,15 @@ export function AddMealPage() {
 
 
 
-  const [aiApplied, setAiApplied] = useState<Partial<MealFormValues> | null>(null);
+  const [aiApplied, setAiApplied] = useState<Partial<MealFormValues> | null>(() =>
+    prefilledFromState ? prefilledFromState : null
+  );
 
-  const [aiAppliedKey, setAiAppliedKey] = useState(0);
+  const [aiAppliedKey, setAiAppliedKey] = useState(() => (prefilledFromState ? 1 : 0));
 
-  const [showAiBanner, setShowAiBanner] = useState(false);
+  const [showAiBanner, setShowAiBanner] = useState(
+    () => !!prefilledFromState || !!savedFood
+  );
 
   const [savedFavourite, setSavedFavourite] = useState(false);
 
@@ -259,20 +266,6 @@ export function AddMealPage() {
     { type: 'dinner', meal: getYesterdayMealByType(profileMeals, 'dinner') },
 
   ];
-
-
-
-  const handleAiApply = (values: Partial<MealFormValues>) => {
-
-    setAiApplied(values);
-
-    setAiAppliedKey((k) => k + 1);
-
-    setShowAiBanner(true);
-
-    setLiveValues((prev) => ({ ...prev, ...values }));
-
-  };
 
 
 
@@ -313,7 +306,7 @@ export function AddMealPage() {
 
 
 
-  const formKey = `${copyFromId ?? favouriteId ?? foodId ?? 'new'}-${aiAppliedKey}`;
+  const formKey = `${copyFromId ?? favouriteId ?? foodId ?? 'new'}-${aiAppliedKey}-${location.key}`;
 
 
 
@@ -350,10 +343,6 @@ export function AddMealPage() {
 
 
 
-      <MealAiAnalysisPanel profileId={activeProfile.id} onApply={handleAiApply} />
-
-
-
       {(favourite || savedFood) && (
 
         <Card className="bg-teal-50 border-teal-100 text-sm text-teal-800">
@@ -368,15 +357,7 @@ export function AddMealPage() {
 
 
 
-      <div id="manual-meal-form">
-
-        <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">
-
-          Manual entry
-
-        </p>
-
-        <MealForm
+      <MealForm
 
           key={formKey}
 
@@ -385,6 +366,12 @@ export function AddMealPage() {
           appliedValues={aiApplied}
 
           showAiEstimateBanner={showAiBanner}
+
+          estimateBannerMessage={
+            fromBarcode || savedFood
+              ? 'Packaged food — review before saving.'
+              : 'Estimate applied — review before saving.'
+          }
 
           profileId={activeProfile.id}
 
@@ -421,10 +408,6 @@ export function AddMealPage() {
           onCancel={() => navigate('/add')}
 
         />
-
-      </div>
-
-
 
       {liveValues.mealName.trim() && (
 

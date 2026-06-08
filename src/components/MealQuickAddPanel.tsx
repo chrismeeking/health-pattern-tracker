@@ -21,21 +21,19 @@ export function MealQuickAddPanel({
 }: MealQuickAddPanelProps) {
   return (
     <div className="space-y-3">
-      <h2 className="text-sm font-medium text-slate-600">Quick add</h2>
-      <div className="grid grid-cols-2 gap-2">
-        <Link to="/add/meal/scan">
-          <Card className="p-3 h-full min-h-[72px] flex flex-col justify-center gap-1 active:scale-[0.99]">
-            <span className="text-lg">📷</span>
-            <span className="text-sm font-medium text-slate-800">Scan barcode</span>
-          </Card>
-        </Link>
-        <Link to="/favourites?pick=1">
-          <Card className="p-3 h-full min-h-[72px] flex flex-col justify-center gap-1 active:scale-[0.99]">
-            <span className="text-lg">⭐</span>
-            <span className="text-sm font-medium text-slate-800">Favourites</span>
-          </Card>
-        </Link>
-      </div>
+      <h2 className="text-sm font-medium text-slate-600 dark:text-slate-400">Shortcuts</h2>
+
+      <Link to="/favourites?pick=1">
+        <Card className="p-3 flex items-center gap-3 active:scale-[0.99] transition-transform">
+          <span className="text-lg">⭐</span>
+          <div>
+            <span className="text-sm font-medium text-slate-800 dark:text-slate-100">
+              Add from favourites
+            </span>
+            <p className="text-xs text-slate-400">Meals you save for one-tap logging</p>
+          </div>
+        </Card>
+      </Link>
 
       {yesterdayOptions.some((o) => o.meal) && (
         <Card className="space-y-2">
@@ -64,10 +62,12 @@ export function MealQuickAddPanel({
             {recentMeals.slice(0, 4).map((meal) => (
               <div
                 key={meal.id}
-                className="rounded-xl bg-slate-50 px-3 py-2.5 space-y-2"
+                className="rounded-xl bg-slate-50 dark:bg-slate-900/50 px-3 py-2.5 space-y-2"
               >
                 <div>
-                  <p className="text-sm font-medium text-slate-800 truncate">{meal.mealName}</p>
+                  <p className="text-sm font-medium text-slate-800 dark:text-slate-100 truncate">
+                    {meal.mealName}
+                  </p>
                   <p className="text-xs text-slate-400">
                     {MEAL_TYPE_LABELS[meal.mealType]} · {meal.calories} kcal
                   </p>

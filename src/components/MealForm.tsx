@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import type { FavouriteMeal, Meal, MealSource, MealType, PortionSize, TriggerTag } from '@/types';
 import { MEAL_SOURCE_LABELS, MEAL_TYPE_LABELS, PORTION_SIZE_LABELS } from '@/types';
 import { TriggerTagSelector } from './TriggerTagSelector';
 import { Button } from './Button';
 import { RiskCard } from './RiskCard';
 import { MealNameSuggestionPanel } from './MealNameSuggestion';
+import { MealVisualAnalysisAssist } from './MealVisualAnalysisAssist';
+import { AssistIconButton, BarcodeIcon, CameraIcon } from './MealInputAssistIcons';
 import {
   searchMealDatabaseSuggestions,
   type SuggestedMealValues,
@@ -37,6 +40,7 @@ interface MealFormProps {
   /** When set, merges into the form (e.g. after AI apply). */
   appliedValues?: Partial<MealFormValues> | null;
   showAiEstimateBanner?: boolean;
+  estimateBannerMessage?: string;
   profileId?: string;
   favourites?: FavouriteMeal[];
   recentMeals?: Meal[];
@@ -91,12 +95,15 @@ export function MealForm({
   riskAssessment,
   appliedValues,
   showAiEstimateBanner,
+  estimateBannerMessage = 'Estimate applied — review before saving.',
   profileId,
   favourites = [],
   recentMeals = [],
   onSuggestApply,
 }: MealFormProps) {
+  const navigate = useNavigate();
   const [form, setForm] = useState<MealFormValues>({ ...defaults, ...initial });
+  const [showVisualAssist, setShowVisualAssist] = useState(false);
 
   useEffect(() => {
     if (!appliedValues) return;
@@ -145,22 +152,58 @@ export function MealForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       {showAiEstimateBanner && (
-        <div className="rounded-xl bg-teal-50 border border-teal-100 px-3 py-2 text-sm text-teal-800">
-          AI estimate — review before saving.
+        <div className="rounded-xl bg-teal-50 border border-teal-100 px-3 py-2 text-sm text-teal-800 dark:bg-teal-950/40 dark:border-teal-800 dark:text-teal-200">
+          {estimateBannerMessage}
         </div>
       )}
 
       <div>
         <label className="text-xs font-medium text-slate-500 block mb-1.5">Meal name *</label>
-        <input
-          type="text"
-          required
-          autoFocus
-          value={form.mealName}
-          onChange={(e) => update('mealName', e.target.value)}
-          placeholder="What did you eat?"
-          className={inputClass}
-        />
+        <div className="flex gap-2">
+          <input
+            type="text"
+            required
+            autoFocus
+            value={form.mealName}
+            onChange={(e) => update('mealName', e.target.value)}
+            placeholder="What did you eat?"
+            className={`${inputClass} flex-1 min-w-0`}
+          />
+          {profileId && onSuggestApply && (
+            <>
+              <AssistIconButton
+                label="Scan barcode"
+                title="Scan packaged food barcode"
+                onClick={() => navigate('/add/meal/scan?from=meal')}
+              >
+                <BarcodeIcon />
+              </AssistIconButton>
+              <AssistIconButton
+                label="Photo or menu analysis"
+                title="Photo or menu analysis"
+                active={showVisualAssist}
+                onClick={() => setShowVisualAssist((open) => !open)}
+              >
+                <CameraIcon />
+              </AssistIconButton>
+            </>
+          )}
+        </div>
+        {profileId && onSuggestApply && (
+          <p className="text-[11px] text-slate-400 mt-1.5">
+            Suggestions appear as you type · barcode or camera for packaged food and photos
+          </p>
+        )}
+        {showVisualAssist && profileId && onSuggestApply && (
+          <MealVisualAnalysisAssist
+            profileId={profileId}
+            onApply={(values) => {
+              applySuggestionValues(values);
+              setShowVisualAssist(false);
+            }}
+            onClose={() => setShowVisualAssist(false)}
+          />
+        )}
         {databaseMatches.length > 0 && (
           <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
             {databaseMatches.map((suggestion) => (
