@@ -1,6 +1,7 @@
 import type {
   AppData,
   DailyCheckIn,
+  ExerciseEntry,
   FavouriteMeal,
   FoodItem,
   Goal,
@@ -372,6 +373,20 @@ function weightRow(entry: WeightEntry, householdId: string) {
   };
 }
 
+function exerciseRow(entry: ExerciseEntry, householdId: string) {
+  return {
+    id: entry.id,
+    household_id: householdId,
+    profile_id: entry.profileId,
+    date_time: entry.dateTime,
+    activity: entry.activity,
+    duration_minutes: entry.durationMinutes,
+    calories_burned: entry.caloriesBurned,
+    notes: entry.notes ?? null,
+    created_at: entry.dateTime,
+  };
+}
+
 function waterRow(entry: WaterEntry, householdId: string) {
   return {
     id: entry.id,
@@ -516,6 +531,12 @@ export async function pushToCloud(data: AppData, meta: SyncMeta): Promise<SyncRe
   );
   errors.push(
     (await upsertTable(
+      'exercise_entries',
+      data.exerciseEntries.map((e) => exerciseRow(e, householdId))
+    )) ?? ''
+  );
+  errors.push(
+    (await upsertTable(
       'water_entries',
       data.waterEntries.map((w) => waterRow(w, householdId))
     )) ?? ''
@@ -582,6 +603,7 @@ export async function pullFromCloud(meta: SyncMeta): Promise<PullResult> {
       symptomsRes,
       checkInsRes,
       weightsRes,
+      exerciseRes,
       waterRes,
       goalsRes,
       favouritesRes,
@@ -593,6 +615,7 @@ export async function pullFromCloud(meta: SyncMeta): Promise<PullResult> {
       supabase.from('symptom_episodes').select('*').eq('household_id', householdId),
       supabase.from('daily_checkins').select('*').eq('household_id', householdId),
       supabase.from('weight_entries').select('*').eq('household_id', householdId),
+      supabase.from('exercise_entries').select('*').eq('household_id', householdId),
       supabase.from('water_entries').select('*').eq('household_id', householdId),
       supabase.from('goals').select('*').eq('household_id', householdId),
       supabase.from('favourite_meals').select('*').eq('household_id', householdId),
@@ -606,6 +629,7 @@ export async function pullFromCloud(meta: SyncMeta): Promise<PullResult> {
       symptomsRes.error ??
       checkInsRes.error ??
       weightsRes.error ??
+      exerciseRes.error ??
       waterRes.error ??
       goalsRes.error;
 
@@ -681,6 +705,17 @@ export async function pullFromCloud(meta: SyncMeta): Promise<PullResult> {
         weight: Number(row.weight),
         notes: row.notes ?? undefined,
       })),
+      exerciseEntries: exerciseRes.error
+        ? []
+        : (exerciseRes.data ?? []).map((row) => ({
+            id: row.id,
+            profileId: row.profile_id,
+            dateTime: row.date_time,
+            activity: row.activity,
+            durationMinutes: Number(row.duration_minutes),
+            caloriesBurned: Number(row.calories_burned),
+            notes: row.notes ?? undefined,
+          })),
       waterEntries: (waterRes.data ?? []).map((row) => ({
         id: row.id,
         profileId: row.profile_id,
@@ -745,7 +780,6 @@ export async function pullFromCloud(meta: SyncMeta): Promise<PullResult> {
             createdAt: row.created_at,
             updatedAt: row.updated_at,
           })),
-      exerciseEntries: [],
       activeProfileId: profiles[0]?.id ?? null,
       demoLoaded: false,
     };

@@ -1,9 +1,11 @@
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useApp } from '@/hooks/useAppData';
-import { generateId } from '@/services/storage';
+import { generateId, getProfileData } from '@/services/storage';
 import { todayISO, nowISO } from '@/utils/helpers';
 import { DailyCheckInForm, type CheckInFormValues } from '@/components/DailyCheckInForm';
 import type { DailyCheckIn } from '@/types';
+import { Card } from '@/components/Card';
+import { Button } from '@/components/Button';
 
 function buildCheckIn(values: CheckInFormValues, profileId: string): DailyCheckIn {
   const now = nowISO();
@@ -14,7 +16,7 @@ function buildCheckIn(values: CheckInFormValues, profileId: string): DailyCheckI
     checkInTime: now,
     noSymptomsReported: values.noSymptomsReported,
     symptomsSinceLastCheckIn: !values.noSymptomsReported,
-    selectedIssues: [],
+    selectedIssues: values.selectedIssueIds,
     mildBloatingPressure: values.mildBloatingPressure || undefined,
     indigestion: values.indigestion || undefined,
     painEpisode: values.painEpisode || undefined,
@@ -37,15 +39,40 @@ function buildCheckIn(values: CheckInFormValues, profileId: string): DailyCheckI
 }
 
 export function DailyCheckInPage() {
-  const { activeProfile, update } = useApp();
+  const { activeProfile, data, update } = useApp();
   const navigate = useNavigate();
 
   if (!activeProfile) return null;
+
+  const profileData = getProfileData(data, activeProfile.id);
+  const today = todayISO();
+  const alreadyCheckedIn = profileData.dailyCheckIns.some((c) => c.date === today);
+  const activeIssues = profileData.issues
+    .filter((i) => i.active)
+    .map((i) => ({ id: i.id, name: i.name }));
+
+  if (alreadyCheckedIn) {
+    return (
+      <div className="space-y-4">
+        <h1 className="text-xl font-semibold text-slate-800">Daily Check-In</h1>
+        <Card className="text-center space-y-3 py-6">
+          <p className="text-sm text-slate-600">You&apos;ve already checked in today.</p>
+          <p className="text-xs text-slate-400">Come back tomorrow for your next check-in.</p>
+          <Link to="/">
+            <Button variant="secondary" size="sm">
+              Back to home
+            </Button>
+          </Link>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-semibold text-slate-800">Daily Check-In</h1>
       <DailyCheckInForm
+        activeIssues={activeIssues}
         onSubmit={(values) => {
           const checkIn = buildCheckIn(values, activeProfile.id);
           update((d) => ({

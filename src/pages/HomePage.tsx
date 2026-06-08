@@ -28,6 +28,8 @@ import {
   hasModule,
   hasPatternInsights,
   hasProgressInsights,
+  isDigestivePrimaryHome,
+  isNutritionPrimaryHome,
   showInsightsNav,
 } from '@/utils/profileModules';
 import { ConfidenceBadge } from '@/components/ConfidenceBadge';
@@ -71,6 +73,8 @@ export function HomePage() {
   const showGoals = hasModule(activeProfile, 'goals');
   const showHealth = hasHealthTracking(activeProfile);
   const macroFocused = isMacroFocusedProfile(activeProfile);
+  const nutritionPrimary = isNutritionPrimaryHome(activeProfile);
+  const digestivePrimary = isDigestivePrimaryHome(activeProfile);
 
   const daysSinceSevere = getDaysSinceSevereEpisode(profileData.symptomEpisodes);
   const lastCheckIn = getLastCheckInStatus(profileData.dailyCheckIns);
@@ -122,6 +126,12 @@ export function HomePage() {
     }));
   };
 
+  const insightsLink = showInsightsNav(activeProfile) && (
+    <Link to="/insights" className="text-xs text-teal-500">
+      All insights
+    </Link>
+  );
+
   return (
     <div className="space-y-5">
       <div>
@@ -139,47 +149,160 @@ export function HomePage() {
 
       <InstallAppPrompt />
 
-      <Card className="bg-gradient-to-br from-teal-700 to-slate-900 text-white border-0 shadow-lg dark:from-teal-800 dark:to-slate-950">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-[10px] uppercase tracking-wide text-teal-200 font-semibold">
-              Viewing profile
-            </p>
-            <p className="text-lg font-semibold mt-0.5">{activeProfile.name}</p>
-            <p className="text-xs text-slate-300 mt-1">
-              {showNutrition && activeProfile.dailyCalorieTarget
-                ? `Target ${activeProfile.dailyCalorieTarget} kcal`
-                : 'Custom tracking profile'}
-              {showHealth && showNutrition ? ' · ' : ''}
-              {showHealth ? 'Health patterns on' : ''}
-            </p>
-          </div>
-          <Link
-            to="/profile"
-            className="text-xs text-teal-100 shrink-0 rounded-full bg-white/10 px-3 py-1.5"
-          >
-            Switch/edit
-          </Link>
-        </div>
-      </Card>
-
-      {topProgressInsight && (
+      {topProgressInsight && !digestivePrimary && (
         <section className="space-y-2">
           <div className="flex justify-between items-center">
             <h2 className="text-sm font-medium text-slate-600 dark:text-slate-300">This week</h2>
-            {showInsightsNav(activeProfile) && (
-              <Link to="/insights" className="text-xs text-teal-500">
-                All insights
-              </Link>
-            )}
+            {insightsLink}
           </div>
           <InsightCard insight={topProgressInsight} />
         </section>
       )}
 
-      <QuickNavLinks profile={activeProfile} />
+      {nutritionPrimary && (
+        <>
+          {showNutrition && (
+            <DailyNutritionSummary
+              totals={todayTotals}
+              profile={activeProfile}
+              exerciseBurned={todayExercise}
+              showExercise={showExercise}
+            />
+          )}
 
-      {showHealthProgress && (
+          {showWeight && (
+            <Link to="/health">
+              <StatCard
+                label="Current weight"
+                value={weightSummary.latest != null ? `${weightSummary.latest} kg` : 'Log'}
+                subtext={
+                  bmi != null && bmiCategory
+                    ? `BMI ${bmi} · ${bmiCategory.label}`
+                    : weightSummary.weekChange != null
+                      ? `${weightSummary.weekChange > 0 ? '+' : ''}${weightSummary.weekChange} kg this week`
+                      : activeProfile.targetWeight
+                        ? `Target ${activeProfile.targetWeight} kg`
+                        : 'Log weight to track trend'
+                }
+              />
+            </Link>
+          )}
+
+          <div className="flex gap-2">
+            <Link to="/meals" className="flex-1">
+              <Button variant="secondary" fullWidth size="sm">
+                View meals
+              </Button>
+            </Link>
+            {showWeight && (
+              <Link to="/add/weight" className="flex-1">
+                <Button variant="outline" fullWidth size="sm">
+                  Log weight
+                </Button>
+              </Link>
+            )}
+          </div>
+
+          <QuickNavLinks profile={activeProfile} compact />
+        </>
+      )}
+
+      {digestivePrimary && showHealth && (
+        <section className="space-y-3">
+          <div className="flex justify-between items-center">
+            <h2 className="text-sm font-medium text-slate-600 dark:text-slate-300">Today</h2>
+            {insightsLink}
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <StatCard
+              label="Days since severe episode"
+              value={daysSinceSevere ?? '—'}
+              subtext={daysSinceSevere != null ? 'Keep tracking progress' : 'No severe episodes logged'}
+            />
+            <StatCard label="Check-in status" value={lastCheckIn} />
+          </div>
+
+          <div className="flex gap-2">
+            <Link to="/add/check-in" className="flex-1">
+              <Button fullWidth size="sm">
+                Daily check-in
+              </Button>
+            </Link>
+            <Link to="/add/symptom" className="flex-1">
+              <Button variant="outline" fullWidth size="sm">
+                Log symptom
+              </Button>
+            </Link>
+          </div>
+
+          {activeIssues.length > 0 && (
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <h3 className="text-xs font-medium text-slate-500 uppercase tracking-wide">
+                  Active issues
+                </h3>
+                <Link to="/issues" className="text-xs text-teal-500">
+                  View all
+                </Link>
+              </div>
+              {activeIssues.map((issue) => (
+                <IssueCard key={issue.id} issue={issue} showActions={false} />
+              ))}
+            </div>
+          )}
+
+          {recentSymptoms.length > 0 && (
+            <div className="space-y-2">
+              <h3 className="text-xs font-medium text-slate-500 uppercase tracking-wide">
+                Recent symptoms
+              </h3>
+              {recentSymptoms.map((ep) => (
+                <SymptomEpisodeCard
+                  key={ep.id}
+                  episode={ep}
+                  issueName={issueName(ep.issueId)}
+                />
+              ))}
+            </div>
+          )}
+
+          {topPatternInsight && <InsightCard insight={topPatternInsight} />}
+
+          {suspectedTriggers.length > 0 && !topPatternInsight && (
+            <Card className="space-y-2">
+              <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Top suspected trigger</p>
+              {suspectedTriggers.slice(0, 1).map((t) => (
+                <div key={t.trigger} className="flex justify-between items-center text-sm">
+                  <span className="text-slate-600 dark:text-slate-300">{t.label}</span>
+                  <ConfidenceBadge level={t.confidence} />
+                </div>
+              ))}
+            </Card>
+          )}
+
+          <div className="flex gap-2">
+            <Link to="/patterns/timeline" className="flex-1">
+              <Button variant="secondary" fullWidth size="sm">
+                Meal–symptom timeline
+              </Button>
+            </Link>
+            <Link to="/issues" className="flex-1">
+              <Button variant="outline" fullWidth size="sm">
+                All issues
+              </Button>
+            </Link>
+          </div>
+
+          <QuickNavLinks profile={activeProfile} compact />
+        </section>
+      )}
+
+      {!nutritionPrimary && !digestivePrimary && (
+        <QuickNavLinks profile={activeProfile} />
+      )}
+
+      {showHealthProgress && !digestivePrimary && (
         <section className="space-y-3">
           <div className="flex justify-between items-center">
             <h2 className="text-sm font-medium text-slate-600 dark:text-slate-300">Health progress</h2>
@@ -188,7 +311,7 @@ export function HomePage() {
             </Link>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            {showWeight && (
+            {showWeight && !nutritionPrimary && (
               <Link to="/health">
                 <StatCard
                   label="Current weight"
@@ -233,7 +356,7 @@ export function HomePage() {
         </section>
       )}
 
-      {showHealth && (
+      {showHealth && !digestivePrimary && (
         <section className="space-y-3">
           <h2 className="text-sm font-medium text-slate-600 dark:text-slate-300">Health snapshot</h2>
           <div className="grid grid-cols-2 gap-3">
@@ -289,20 +412,14 @@ export function HomePage() {
             </div>
           )}
 
-          {(suspectedTriggers.length > 0 || toleratedFoods.length > 0 || topPatternInsight) && (
+          {(suspectedTriggers.length > 0 || toleratedFoods.length > 0) && !topPatternInsight && (
             <div className="space-y-3">
               <div className="flex justify-between items-center">
                 <h3 className="text-xs font-medium text-slate-500 uppercase tracking-wide">
                   Pattern snapshot
                 </h3>
-                {showInsightsNav(activeProfile) && (
-                  <Link to="/insights" className="text-xs text-teal-500">
-                    All insights
-                  </Link>
-                )}
+                {insightsLink}
               </div>
-
-              {topPatternInsight && <InsightCard insight={topPatternInsight} />}
 
               {suspectedTriggers.length > 0 && (
                 <Card className="space-y-2">
@@ -329,10 +446,22 @@ export function HomePage() {
               )}
             </div>
           )}
+
+          {topPatternInsight && !digestivePrimary && (
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <h3 className="text-xs font-medium text-slate-500 uppercase tracking-wide">
+                  Top pattern insight
+                </h3>
+                {insightsLink}
+              </div>
+              <InsightCard insight={topPatternInsight} />
+            </div>
+          )}
         </section>
       )}
 
-      {showNutrition && (
+      {!nutritionPrimary && showNutrition && (
         <DailyNutritionSummary
           totals={todayTotals}
           profile={activeProfile}
@@ -341,7 +470,7 @@ export function HomePage() {
         />
       )}
 
-      {showMacros &&
+      {showMacros && !nutritionPrimary &&
         (macroFocused ? (
           <MacroSummary totals={todayTotals} profile={activeProfile} />
         ) : (
@@ -356,20 +485,22 @@ export function HomePage() {
         />
       )}
 
-      <div className="flex gap-2">
-        <Link to="/add/meal" className="flex-1">
-          <Button fullWidth size="sm">
-            Add meal
-          </Button>
-        </Link>
-        {showWater && (
-          <Link to="/add/water" className="flex-1">
-            <Button variant="outline" fullWidth size="sm">
-              Add water
+      {showNutrition && (
+        <div className="flex gap-2">
+          <Link to="/add/meal" className="flex-1">
+            <Button fullWidth size="sm">
+              Add meal
             </Button>
           </Link>
-        )}
-      </div>
+          {showWater && (
+            <Link to="/add/water" className="flex-1">
+              <Button variant="outline" fullWidth size="sm">
+                Add water
+              </Button>
+            </Link>
+          )}
+        </div>
+      )}
 
       {recentMeals.length > 0 && (
         <section className="space-y-3">
@@ -384,7 +515,7 @@ export function HomePage() {
           ))}
         </section>
       )}
-      {recentMeals.length === 0 && (
+      {recentMeals.length === 0 && showNutrition && (
         <Card className="border-dashed border-slate-200 bg-white/70 text-center space-y-3 dark:border-slate-700 dark:bg-slate-900/70">
           <div className="mx-auto h-10 w-10 rounded-full bg-teal-50 text-teal-600 flex items-center justify-center dark:bg-teal-500/15 dark:text-teal-200">
             <Icon name="meals" className="h-5 w-5" />

@@ -3,13 +3,15 @@ import { Link } from 'react-router-dom';
 import { useApp } from '@/hooks/useAppData';
 import { getProfileData, removeById, generateId } from '@/services/storage';
 import { getMealsForDate, getTodayNutrition } from '@/utils/nutrition';
-import { getTodayExerciseBurn } from '@/utils/exercise';
+import { getTodayExerciseBurn, getExerciseEntriesForDate, EXERCISE_LABELS } from '@/utils/exercise';
 import { hasModule } from '@/utils/profileModules';
-import { todayISO, nowISO } from '@/utils/helpers';
+import { getWeightSummary } from '@/utils/health';
+import { todayISO, nowISO, formatTime } from '@/utils/helpers';
 import { DailyNutritionSummary } from '@/components/DailyNutritionSummary';
 import { MacroSummary } from '@/components/MacroSummary';
 import { WaterTracker } from '@/components/WaterTracker';
 import { MealCard } from '@/components/MealCard';
+import { StatCard } from '@/components/StatCard';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
@@ -32,9 +34,15 @@ export function MealsPage() {
   const todayTotals = getTodayNutrition(profileData.meals);
   const todayExercise = getTodayExerciseBurn(profileData.exerciseEntries);
   const showExercise = hasModule(activeProfile, 'exercise');
+  const showWater = hasModule(activeProfile, 'water');
+  const showWeight = hasModule(activeProfile, 'weight');
   const todayWater = profileData.waterEntries
     .filter((e) => e.dateTime.startsWith(today))
     .reduce((s, e) => s + e.amountMl, 0);
+  const todayExerciseEntries = getExerciseEntriesForDate(profileData.exerciseEntries, today).sort(
+    (a, b) => new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime()
+  );
+  const weightSummary = getWeightSummary(profileData.weightEntries, activeProfile);
 
   const mealToDelete =
     deleteId != null
@@ -67,19 +75,38 @@ export function MealsPage() {
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-xl font-semibold text-slate-800">Meals</h1>
         <div className="flex gap-2">
+          <Link to="/favourites">
+            <Button variant="outline" size="sm">Favourites</Button>
+          </Link>
           {showExercise && (
             <Link to="/add/exercise">
               <Button variant="outline" size="sm">Exercise</Button>
             </Link>
           )}
-          <Link to="/add/water">
-            <Button variant="outline" size="sm">Water</Button>
-          </Link>
+          {showWater && (
+            <Link to="/add/water">
+              <Button variant="outline" size="sm">Water</Button>
+            </Link>
+          )}
           <Link to="/add/meal">
             <Button size="sm">+ Meal</Button>
           </Link>
         </div>
       </div>
+
+      {showWeight && (
+        <Link to="/health">
+          <StatCard
+            label="Current weight"
+            value={weightSummary.latest != null ? `${weightSummary.latest} kg` : 'Log'}
+            subtext={
+              weightSummary.weekChange != null
+                ? `${weightSummary.weekChange > 0 ? '+' : ''}${weightSummary.weekChange} kg this week`
+                : 'Tap for health hub'
+            }
+          />
+        </Link>
+      )}
 
       <DailyNutritionSummary
         totals={todayTotals}
@@ -92,12 +119,38 @@ export function MealsPage() {
         <MacroSummary totals={todayTotals} profile={activeProfile} />
       )}
 
-      {activeProfile.enabledModules.includes('water') && (
+      {showWater && (
         <WaterTracker
           currentMl={todayWater}
           targetMl={activeProfile.waterTarget}
           onAdd={addWater}
         />
+      )}
+
+      {showExercise && todayExerciseEntries.length > 0 && (
+        <section className="space-y-2">
+          <div className="flex justify-between items-center">
+            <h2 className="text-sm font-medium text-slate-600">Today&apos;s exercise</h2>
+            <Link to="/add/exercise" className="text-xs text-teal-500">
+              + Add
+            </Link>
+          </div>
+          {todayExerciseEntries.map((entry) => (
+            <Card key={entry.id} className="flex justify-between items-center text-sm">
+              <div>
+                <p className="font-medium text-slate-800">
+                  {EXERCISE_LABELS[entry.activity]}
+                </p>
+                <p className="text-xs text-slate-400">
+                  {entry.durationMinutes} min · {entry.caloriesBurned} kcal · {formatTime(entry.dateTime)}
+                </p>
+              </div>
+              <Link to={`/add/exercise?edit=${entry.id}`} className="text-xs text-teal-500">
+                Edit
+              </Link>
+            </Card>
+          ))}
+        </section>
       )}
 
       <section className="space-y-3">

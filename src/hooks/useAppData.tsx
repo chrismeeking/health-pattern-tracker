@@ -14,6 +14,7 @@ import type { SyncMeta } from '@/services/sync/types';
 import {
   isCloudSyncAvailable,
   loadSyncMeta,
+  pullFromCloud,
   pushToCloud,
   restoreSessionFromSupabase,
   saveSyncMeta,
@@ -39,6 +40,8 @@ interface AppContextValue {
   signUp: (email: string, password: string) => Promise<string | null>;
   signOutUser: () => Promise<void>;
   syncNow: () => Promise<string | null>;
+  pullFromCloudAndReplace: () => Promise<string | null>;
+  checkCloudHasData: () => Promise<boolean>;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -118,6 +121,34 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return null;
   }, []);
 
+  const checkCloudHasData = useCallback(async () => {
+    const meta = loadSyncMeta();
+    if (!meta.session.userId || !meta.household.id) return false;
+    const result = await pullFromCloud(meta);
+    if (!result.ok || !result.data) return false;
+    return (
+      result.data.profiles.length > 0 ||
+      result.data.meals.length > 0 ||
+      result.data.symptomEpisodes.length > 0
+    );
+  }, []);
+
+  const pullFromCloudAndReplace = useCallback(async () => {
+    const meta = loadSyncMeta();
+    const result = await pullFromCloud(meta);
+    if (!result.ok || !result.data) {
+      return result.error ?? 'Could not pull from cloud.';
+    }
+    const merged = {
+      ...result.data,
+      activeProfileId: result.data.activeProfileId ?? loadData().activeProfileId,
+    };
+    saveData(merged);
+    setData(merged);
+    setSyncMeta(loadSyncMeta());
+    return null;
+  }, []);
+
   const activeProfile =
     data.profiles.find((p) => p.id === data.activeProfileId) ?? data.profiles[0] ?? null;
 
@@ -139,6 +170,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         signUp,
         signOutUser,
         syncNow,
+        pullFromCloudAndReplace,
+        checkCloudHasData,
       }}
     >
       {children}

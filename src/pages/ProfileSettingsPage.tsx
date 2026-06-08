@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { useApp } from '@/hooks/useAppData';
 import { generateId, getProfileData } from '@/services/storage';
@@ -15,7 +15,6 @@ import {
   exportWeightEntriesCsv,
 } from '@/services/export';
 import { SettingsSection } from '@/components/SettingsSection';
-import { QuickNavLinks } from '@/components/QuickNavLinks';
 import { SyncStatusBadge } from '@/components/SyncStatusBadge';
 import { AppUpdateCard } from '@/components/AppUpdateCard';
 import { ThemeSelector } from '@/components/ThemeSelector';
@@ -54,6 +53,35 @@ const SEX_OPTIONS: NonNullable<Profile['sex']>[] = [
 
 type DestructiveAction = 'clearActiveProfile' | 'clearDemo' | 'clearAll' | 'resetApp' | null;
 
+function CollapsibleSection({
+  title,
+  description,
+  defaultOpen = true,
+  children,
+}: {
+  title: string;
+  description?: string;
+  defaultOpen?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <details open={defaultOpen} className="group rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
+      <summary className="cursor-pointer list-none px-4 py-3 flex items-center justify-between gap-2">
+        <div>
+          <h2 className="text-sm font-medium text-slate-700 dark:text-slate-200">{title}</h2>
+          {description && (
+            <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">{description}</p>
+          )}
+        </div>
+        <span className="text-slate-400 text-xs group-open:rotate-180 transition-transform">▼</span>
+      </summary>
+      <div className="px-4 pb-4 space-y-4 border-t border-slate-100 dark:border-slate-800 pt-4">
+        {children}
+      </div>
+    </details>
+  );
+}
+
 export function ProfileSettingsPage() {
   const {
     data,
@@ -70,6 +98,8 @@ export function ProfileSettingsPage() {
     signUp,
     signOutUser,
     syncNow,
+    pullFromCloudAndReplace,
+    checkCloudHasData,
   } = useApp();
   const [newName, setNewName] = useState('');
   const [showNew, setShowNew] = useState(false);
@@ -80,6 +110,16 @@ export function ProfileSettingsPage() {
   const [authLoading, setAuthLoading] = useState(false);
   const [authMessage, setAuthMessage] = useState<string | null>(null);
   const [syncLoading, setSyncLoading] = useState(false);
+  const [pullLoading, setPullLoading] = useState(false);
+  const [cloudHasData, setCloudHasData] = useState(false);
+
+  useEffect(() => {
+    if (!isSignedIn) {
+      setCloudHasData(false);
+      return;
+    }
+    void checkCloudHasData().then(setCloudHasData);
+  }, [isSignedIn, checkCloudHasData, syncMeta.lastSyncedAt]);
 
   const inputClass =
     'w-full px-3 py-3 rounded-xl border border-slate-200 bg-white text-slate-800 text-base focus:outline-none focus:ring-2 focus:ring-teal-500/30 min-h-[48px] dark:bg-slate-950 dark:border-slate-800 dark:text-slate-100';
@@ -223,9 +263,22 @@ export function ProfileSettingsPage() {
       setAuthMessage(
         authMode === 'sign-up'
           ? 'Account created. Check email if confirmation is required, then sync.'
-          : 'Signed in. You can sync your local data to the cloud.'
+          : 'Signed in. You can sync your local data to the cloud or pull existing cloud data.'
       );
       setAuthPassword('');
+      void checkCloudHasData().then(setCloudHasData);
+    }
+  };
+
+  const handlePullFromCloud = async () => {
+    setPullLoading(true);
+    setAuthMessage(null);
+    const error = await pullFromCloudAndReplace();
+    setPullLoading(false);
+    if (error) setAuthMessage(error);
+    else {
+      setAuthMessage('Local data replaced with cloud copy.');
+      setCloudHasData(false);
     }
   };
 
@@ -268,15 +321,10 @@ export function ProfileSettingsPage() {
         </p>
       </div>
 
-      {activeProfile && (
-        <SettingsSection
-          title="Quick navigation"
-          description="Shortcuts match this profile's enabled modules."
-        >
-          <QuickNavLinks profile={activeProfile} />
-        </SettingsSection>
-      )}
-
+      <CollapsibleSection
+        title="Profile & targets"
+        description="Name, modules, goals, body metrics, and nutrition targets."
+      >
       <SettingsSection
         title={activeProfile ? `Profile settings for ${activeProfile.name}` : 'Profile settings'}
         description="Switch profile or edit details for the selected person."
@@ -572,23 +620,12 @@ export function ProfileSettingsPage() {
           </Card>
         </SettingsSection>
       )}
+      </CollapsibleSection>
 
-      <SettingsSection
-        title="Trigger tag reference"
-        description="Shared tag list available to every profile when logging meals — not confirmed causes."
+      <CollapsibleSection
+        title="Data & sync"
+        description="Cloud sync, exports, and household backups."
       >
-        <Card className="flex flex-wrap gap-2">
-          {ALL_TRIGGER_TAGS.map((tag) => (
-            <span
-              key={tag}
-              className="text-xs px-2.5 py-1.5 rounded-full bg-slate-100 text-slate-600"
-            >
-              {TRIGGER_TAG_LABELS[tag]}
-            </span>
-          ))}
-        </Card>
-      </SettingsSection>
-
       <SettingsSection
         title="Cloud sync & account"
         description="App-wide sync for all household profiles across devices. Login is never required."
@@ -641,8 +678,18 @@ export function ProfileSettingsPage() {
                 >
                   {syncLoading || syncMeta.displayStatus === 'syncing'
                     ? 'Syncing…'
-                    : 'Sync now'}
+                    : 'Sync now (push local)'}
                 </Button>
+                {cloudHasData && (
+                  <Button
+                    variant="outline"
+                    fullWidth
+                    onClick={() => void handlePullFromCloud()}
+                    disabled={pullLoading}
+                  >
+                    {pullLoading ? 'Pulling…' : 'Replace local with cloud'}
+                  </Button>
+                )}
                 <Button variant="outline" fullWidth onClick={() => void signOutUser()}>
                   Sign out
                 </Button>
@@ -728,54 +775,6 @@ export function ProfileSettingsPage() {
       </SettingsSection>
 
       <SettingsSection
-        title={`Favourites & packaged foods for ${activeProfileLabel}`}
-        description="Quick-add meals and saved barcode foods for the selected profile."
-      >
-        <Card className="space-y-3">
-          <div className="flex justify-between text-sm">
-            <span className="text-slate-500">Favourites</span>
-            <span className="font-medium text-slate-800">
-              {activeProfile
-                ? getFavouritesForProfile(data, activeProfile.id).length
-                : 0}
-            </span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-slate-500">Saved foods</span>
-            <span className="font-medium text-slate-800">
-              {activeProfile
-                ? getSavedFoodsForProfile(data.savedFoods, activeProfile.id).length
-                : 0}
-            </span>
-          </div>
-          <div className="flex justify-between text-sm gap-4">
-            <span className="text-slate-500">Barcode lookup</span>
-            <span className="font-medium text-slate-800 text-right text-xs">
-              {getLookupStatusLabel()}
-            </span>
-          </div>
-          <div className="flex justify-between text-sm gap-4">
-            <span className="text-slate-500">Scanner</span>
-            <span className="font-medium text-slate-800 text-right text-xs">
-              {getScannerStatusLabel()}
-            </span>
-          </div>
-          <div className="grid gap-2 pt-1">
-            <Link to="/favourites">
-              <Button variant="outline" fullWidth>
-                Manage favourite meals
-              </Button>
-            </Link>
-            <Link to="/saved-foods">
-              <Button variant="outline" fullWidth>
-                Manage saved foods
-              </Button>
-            </Link>
-          </div>
-        </Card>
-      </SettingsSection>
-
-      <SettingsSection
         title="Data export"
         description="Export the selected profile first, or export all profiles for a full household backup. CSV files open in Excel."
       >
@@ -843,6 +842,76 @@ export function ProfileSettingsPage() {
           </Card>
         </div>
       </SettingsSection>
+      </CollapsibleSection>
+
+      <CollapsibleSection
+        title="Advanced"
+        description="Destructive actions, trigger reference, favourites, and app updates."
+        defaultOpen={false}
+      >
+      <SettingsSection
+        title={`Favourites & packaged foods for ${activeProfileLabel}`}
+        description="Quick-add meals and saved barcode foods for the selected profile."
+      >
+        <Card className="space-y-3">
+          <div className="flex justify-between text-sm">
+            <span className="text-slate-500">Favourites</span>
+            <span className="font-medium text-slate-800">
+              {activeProfile
+                ? getFavouritesForProfile(data, activeProfile.id).length
+                : 0}
+            </span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-slate-500">Saved foods</span>
+            <span className="font-medium text-slate-800">
+              {activeProfile
+                ? getSavedFoodsForProfile(data.savedFoods, activeProfile.id).length
+                : 0}
+            </span>
+          </div>
+          <div className="flex justify-between text-sm gap-4">
+            <span className="text-slate-500">Barcode lookup</span>
+            <span className="font-medium text-slate-800 text-right text-xs">
+              {getLookupStatusLabel()}
+            </span>
+          </div>
+          <div className="flex justify-between text-sm gap-4">
+            <span className="text-slate-500">Scanner</span>
+            <span className="font-medium text-slate-800 text-right text-xs">
+              {getScannerStatusLabel()}
+            </span>
+          </div>
+          <div className="grid gap-2 pt-1">
+            <Link to="/favourites">
+              <Button variant="outline" fullWidth>
+                Manage favourite meals
+              </Button>
+            </Link>
+            <Link to="/saved-foods">
+              <Button variant="outline" fullWidth>
+                Manage saved foods
+              </Button>
+            </Link>
+          </div>
+        </Card>
+      </SettingsSection>
+
+      <details className="rounded-xl border border-slate-200 dark:border-slate-800">
+        <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-slate-700 dark:text-slate-200">
+          Trigger tag reference
+        </summary>
+        <Card className="mx-4 mb-4 flex flex-wrap gap-2 border-0 shadow-none">
+          {ALL_TRIGGER_TAGS.map((tag) => (
+            <span
+              key={tag}
+              className="text-xs px-2.5 py-1.5 rounded-full bg-slate-100 text-slate-600"
+            >
+              {TRIGGER_TAG_LABELS[tag]}
+            </span>
+          ))}
+        </Card>
+      </details>
 
       <SettingsSection
         title="Data management"
@@ -903,6 +972,7 @@ export function ProfileSettingsPage() {
           </Card>
         </div>
       </SettingsSection>
+      </CollapsibleSection>
 
       <ConfirmDialog
         open={destructiveAction != null}

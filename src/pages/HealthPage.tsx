@@ -9,7 +9,7 @@ import {
   getWeightSummary,
   isDigestiveProfile,
 } from '@/utils/health';
-import { hasModule } from '@/utils/profileModules';
+import { hasModule, showInsightsNav } from '@/utils/profileModules';
 import { WeightChart } from '@/components/WeightChart';
 import { GoalCard } from '@/components/GoalCard';
 import { WeeklyProgressCard } from '@/components/WeeklyProgressCard';
@@ -99,11 +99,20 @@ export function HealthPage() {
           <h1 className="text-xl font-semibold text-slate-800">Health & progress</h1>
           <p className="text-sm text-slate-400">Small improvements, not strict rules</p>
         </div>
-        <Link to="/add/weight">
-          <Button size="sm" variant="outline">
-            Log weight
-          </Button>
-        </Link>
+        <div className="flex gap-2 shrink-0">
+          {showInsightsNav(activeProfile) && (
+            <Link to="/insights">
+              <Button size="sm" variant="outline">
+                Insights
+              </Button>
+            </Link>
+          )}
+          <Link to="/add/weight">
+            <Button size="sm" variant="outline">
+              Log weight
+            </Button>
+          </Link>
+        </div>
       </div>
 
       <WeightChart

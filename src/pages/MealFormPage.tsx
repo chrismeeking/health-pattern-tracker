@@ -361,6 +361,8 @@ export function AddMealPage() {
 
           key={formKey}
 
+          quickMode
+
           initial={initialFromSource}
 
           appliedValues={aiApplied}

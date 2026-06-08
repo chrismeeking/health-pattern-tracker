@@ -34,10 +34,13 @@ export function IssuesPage() {
         </Link>
       </div>
 
-      <Card className="bg-teal-50 border-teal-100">
+      <Card className="bg-teal-50 border-teal-100 space-y-2">
         <p className="text-sm text-teal-800 leading-relaxed">
           Track what you want to understand. Link symptoms and meals to build a picture over time.
         </p>
+        <Link to="/patterns/timeline" className="text-xs text-teal-600 font-medium">
+          View meal–symptom timeline →
+        </Link>
       </Card>
 
       {issues.length === 0 ? (

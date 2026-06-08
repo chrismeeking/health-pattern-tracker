@@ -15,6 +15,7 @@ auth.users (Supabase managed)
                                                     ├── symptom_episodes
                                                     ├── daily_checkins
                                                     ├── weight_entries
+                                                    ├── exercise_entries
                                                     ├── water_entries
                                                     └── goals
 ```
@@ -223,6 +224,38 @@ Maps to app `SymptomEpisode`. Store extended fields in `payload jsonb` for flexi
 | weight      | numeric |                    |
 | notes       | text    | nullable           |
 | created_at  | timestamptz |              |
+
+---
+
+## Table: `exercise_entries`
+
+Maps to app `ExerciseEntry`.
+
+| Column           | Type        | Notes              |
+|-----------------|-------------|--------------------|
+| id              | text PK     |                    |
+| household_id    | uuid        |                    |
+| profile_id      | text        | FK → `profiles.id` |
+| date_time       | timestamptz |                    |
+| activity        | text        | Exercise type      |
+| duration_minutes| int         |                    |
+| calories_burned | numeric     |                    |
+| notes           | text        | nullable           |
+| created_at      | timestamptz |                    |
+
+```sql
+create table public.exercise_entries (
+  id text primary key,
+  household_id uuid not null references public.households(id) on delete cascade,
+  profile_id text not null references public.profiles(id) on delete cascade,
+  date_time timestamptz not null,
+  activity text not null,
+  duration_minutes int not null,
+  calories_burned numeric not null,
+  notes text,
+  created_at timestamptz not null default now()
+);
+```
 
 ---
 

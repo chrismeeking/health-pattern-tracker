@@ -5,7 +5,11 @@ import {
   getSuggestedNutritionTargets,
   suggestedTargetsToProfileFields,
 } from '@/utils/nutritionTargets';
-import { normalizeEnabledModules } from '@/utils/profileModules';
+import {
+  detectPreset,
+  modulesForPreset,
+  normalizeEnabledModules,
+} from '@/utils/profileModules';
 import {
   GOAL_TYPE_LABELS,
   type ActivityLevel,
@@ -22,6 +26,18 @@ const ACTIVITY_LEVELS: ActivityLevel[] = ['sedentary', 'light', 'moderate', 'act
 
 const DEFAULT_MODULES: ProfileModule[] = ['nutrition', 'macros', 'weight', 'water', 'exercise', 'goals'];
 
+function presetShowsWeightFields(modules: ProfileModule[]): boolean {
+  const preset = detectPreset(modules);
+  if (preset === 'digestiveHealth') return false;
+  if (preset === 'simpleCalories') return false;
+  return modules.includes('weight') || modules.includes('macros');
+}
+
+function presetShowsNutritionTargets(modules: ProfileModule[]): boolean {
+  const preset = detectPreset(modules);
+  return preset !== 'digestiveHealth' && modules.includes('nutrition');
+}
+
 export function OnboardingPanel() {
   const { update, loadDemo } = useApp();
   const [name, setName] = useState('');
@@ -32,6 +48,15 @@ export function OnboardingPanel() {
   const [height, setHeight] = useState('');
   const [age, setAge] = useState('');
   const [modules, setModules] = useState<ProfileModule[]>(DEFAULT_MODULES);
+
+  const handleModulesChange = (next: ProfileModule[]) => {
+    const preset = detectPreset(next);
+    if (preset === 'digestiveHealth') {
+      setModules(modulesForPreset('digestiveHealth'));
+      return;
+    }
+    setModules(next);
+  };
 
   const previewProfile = useMemo<Profile>(
     () => ({
@@ -49,6 +74,8 @@ export function OnboardingPanel() {
   );
 
   const suggestedTargets = getSuggestedNutritionTargets(previewProfile);
+  const showWeightFields = presetShowsWeightFields(modules);
+  const showNutritionTargets = presetShowsNutritionTargets(modules);
 
   const createProfile = () => {
     const trimmedName = name.trim();
@@ -61,10 +88,12 @@ export function OnboardingPanel() {
       name: trimmedName,
       enabledModules: normalizeEnabledModules(modules),
     };
-    const profile: Profile = {
-      ...baseProfile,
-      ...suggestedTargetsToProfileFields(getSuggestedNutritionTargets(baseProfile)),
-    };
+    const profile: Profile = showNutritionTargets
+      ? {
+          ...baseProfile,
+          ...suggestedTargetsToProfileFields(getSuggestedNutritionTargets(baseProfile)),
+        }
+      : baseProfile;
 
     update((data) => ({
       ...data,
@@ -105,75 +134,79 @@ export function OnboardingPanel() {
           />
         </div>
 
-        <ModulePresetPicker modules={modules} onChange={setModules} />
+        <ModulePresetPicker modules={modules} onChange={handleModulesChange} />
 
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-xs text-slate-500 mb-1 dark:text-slate-400">Goal</label>
-            <select
-              value={goalType}
-              onChange={(event) => setGoalType(event.target.value as GoalType)}
-              className={inputClass}
-            >
-              {GOAL_TYPES.map((goal) => (
-                <option key={goal} value={goal}>
-                  {GOAL_TYPE_LABELS[goal]}
-                </option>
-              ))}
-            </select>
+        {showNutritionTargets && (
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs text-slate-500 mb-1 dark:text-slate-400">Goal</label>
+              <select
+                value={goalType}
+                onChange={(event) => setGoalType(event.target.value as GoalType)}
+                className={inputClass}
+              >
+                {GOAL_TYPES.map((goal) => (
+                  <option key={goal} value={goal}>
+                    {GOAL_TYPE_LABELS[goal]}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs text-slate-500 mb-1 dark:text-slate-400">Activity</label>
+              <select
+                value={activityLevel}
+                onChange={(event) => setActivityLevel(event.target.value as ActivityLevel)}
+                className={inputClass}
+              >
+                {ACTIVITY_LEVELS.map((level) => (
+                  <option key={level} value={level}>
+                    {level}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
-          <div>
-            <label className="block text-xs text-slate-500 mb-1 dark:text-slate-400">Activity</label>
-            <select
-              value={activityLevel}
-              onChange={(event) => setActivityLevel(event.target.value as ActivityLevel)}
+        )}
+
+        {showWeightFields && (
+          <div className="grid grid-cols-2 gap-3">
+            <input
+              type="number"
+              inputMode="decimal"
+              value={currentWeight}
+              onChange={(event) => setCurrentWeight(event.target.value)}
+              placeholder="Current kg (optional)"
               className={inputClass}
-            >
-              {ACTIVITY_LEVELS.map((level) => (
-                <option key={level} value={level}>
-                  {level}
-                </option>
-              ))}
-            </select>
+            />
+            <input
+              type="number"
+              inputMode="decimal"
+              value={targetWeight}
+              onChange={(event) => setTargetWeight(event.target.value)}
+              placeholder="Target kg (optional)"
+              className={inputClass}
+            />
+            <input
+              type="number"
+              inputMode="numeric"
+              value={height}
+              onChange={(event) => setHeight(event.target.value)}
+              placeholder="Height cm (optional)"
+              className={inputClass}
+            />
+            <input
+              type="number"
+              inputMode="numeric"
+              value={age}
+              onChange={(event) => setAge(event.target.value)}
+              placeholder="Age (optional)"
+              className={inputClass}
+            />
           </div>
-        </div>
+        )}
 
-        <div className="grid grid-cols-2 gap-3">
-          <input
-            type="number"
-            inputMode="decimal"
-            value={currentWeight}
-            onChange={(event) => setCurrentWeight(event.target.value)}
-            placeholder="Current kg (optional)"
-            className={inputClass}
-          />
-          <input
-            type="number"
-            inputMode="decimal"
-            value={targetWeight}
-            onChange={(event) => setTargetWeight(event.target.value)}
-            placeholder="Target kg (optional)"
-            className={inputClass}
-          />
-          <input
-            type="number"
-            inputMode="numeric"
-            value={height}
-            onChange={(event) => setHeight(event.target.value)}
-            placeholder="Height cm (optional)"
-            className={inputClass}
-          />
-          <input
-            type="number"
-            inputMode="numeric"
-            value={age}
-            onChange={(event) => setAge(event.target.value)}
-            placeholder="Age (optional)"
-            className={inputClass}
-          />
-        </div>
-
-        {previewProfile.enabledModules.includes('nutrition') && (
+        {showNutritionTargets && (
           <div className="rounded-xl bg-slate-50 border border-slate-100 px-3 py-2 dark:bg-slate-950 dark:border-slate-800">
             <p className="text-xs font-medium text-slate-700 dark:text-slate-100">Starting targets</p>
             <p className="text-[11px] text-slate-500 mt-0.5 dark:text-slate-400">

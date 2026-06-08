@@ -9,7 +9,6 @@ import {
   getTriggerReports,
 } from '@/services/insightEngine';
 import { generateProgressInsights } from '@/services/progressInsightEngine';
-import { assessMealRisk } from '@/services/riskEngine';
 import { formatDate, formatTime } from '@/utils/helpers';
 import {
   hasPatternInsights,
@@ -17,7 +16,6 @@ import {
   showInsightsNav,
 } from '@/utils/profileModules';
 import { InsightCard } from '@/components/InsightCard';
-import { RiskCard } from '@/components/RiskCard';
 import { ConfidenceBadge } from '@/components/ConfidenceBadge';
 import { Card } from '@/components/Card';
 import { MEDICAL_DISCLAIMER, INSIGHTS_DISCLAIMER, TRIGGER_TAG_LABELS } from '@/types';
@@ -46,11 +44,10 @@ export function InsightsPage() {
     ? getRecentSymptomPatterns(data, activeProfile.id)
     : [];
 
-  const profileMeals = data.meals.filter((m) => m.profileId === activeProfile.id);
-  const exampleRisk =
-    showPatterns && profileMeals.length > 0
-      ? assessMealRisk(profileMeals[0], data, activeProfile.id)
-      : null;
+  const symptomEpisodeCount = data.symptomEpisodes.filter(
+    (s) => s.profileId === activeProfile.id
+  ).length;
+  const showTriggerAnalysis = symptomEpisodeCount >= 3;
 
   if (!showInsightsNav(activeProfile)) {
     return (
@@ -153,7 +150,7 @@ export function InsightsPage() {
             </section>
           )}
 
-          {triggerReports.length > 0 && (
+          {showTriggerAnalysis && triggerReports.length > 0 && (
             <section className="space-y-3">
               <h2 className="text-sm font-medium text-slate-600 dark:text-slate-300">Trigger analysis</h2>
               <div className="overflow-x-auto -mx-1">
@@ -213,14 +210,10 @@ export function InsightsPage() {
               ))}
           </section>
 
-          {exampleRisk && (
-            <section className="space-y-3">
-              <h2 className="text-sm font-medium text-slate-600 dark:text-slate-300">Risk estimate example</h2>
-              <p className="text-xs text-slate-400">
-                Based on your most recent logged meal — the same estimate appears when adding meals.
-              </p>
-              <RiskCard assessment={exampleRisk} />
-            </section>
+          {!showTriggerAnalysis && showPatterns && (
+            <Card className="text-sm text-slate-500 text-center py-4">
+              Log at least 3 symptom episodes to unlock trigger analysis for {activeProfile.name}.
+            </Card>
           )}
         </>
       )}

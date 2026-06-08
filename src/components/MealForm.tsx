@@ -45,6 +45,8 @@ interface MealFormProps {
   favourites?: FavouriteMeal[];
   recentMeals?: Meal[];
   onSuggestApply?: (values: Partial<MealFormValues>) => void;
+  /** When true, show essential fields first with expandable advanced options. */
+  quickMode?: boolean;
 }
 
 const defaults: MealFormValues = {
@@ -100,10 +102,12 @@ export function MealForm({
   favourites = [],
   recentMeals = [],
   onSuggestApply,
+  quickMode = false,
 }: MealFormProps) {
   const navigate = useNavigate();
   const [form, setForm] = useState<MealFormValues>({ ...defaults, ...initial });
   const [showVisualAssist, setShowVisualAssist] = useState(false);
+  const [showMoreOptions, setShowMoreOptions] = useState(!quickMode);
 
   useEffect(() => {
     if (!appliedValues) return;
@@ -169,7 +173,7 @@ export function MealForm({
             placeholder="What did you eat?"
             className={`${inputClass} flex-1 min-w-0`}
           />
-          {profileId && onSuggestApply && (
+          {(!quickMode || showMoreOptions) && profileId && onSuggestApply && (
             <>
               <AssistIconButton
                 label="Scan barcode"
@@ -189,7 +193,7 @@ export function MealForm({
             </>
           )}
         </div>
-        {profileId && onSuggestApply && (
+        {(!quickMode || showMoreOptions) && profileId && onSuggestApply && (
           <p className="text-[11px] text-slate-400 mt-1.5">
             Suggestions appear as you type · barcode or camera for packaged food and photos
           </p>
@@ -204,7 +208,7 @@ export function MealForm({
             onClose={() => setShowVisualAssist(false)}
           />
         )}
-        {databaseMatches.length > 0 && (
+        {(!quickMode || showMoreOptions) && databaseMatches.length > 0 && (
           <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
             {databaseMatches.map((suggestion) => (
               <button
@@ -223,7 +227,7 @@ export function MealForm({
             ))}
           </div>
         )}
-        {profileId && onSuggestApply && (
+        {(!quickMode || showMoreOptions) && profileId && onSuggestApply && (
           <MealNameSuggestionPanel
             profileId={profileId}
             mealName={form.mealName}
@@ -252,22 +256,6 @@ export function MealForm({
       </div>
 
       <div>
-        <label className="text-xs font-medium text-slate-500 block mb-1.5">Source</label>
-        <div className="flex flex-wrap gap-2">
-          {(Object.keys(MEAL_SOURCE_LABELS) as MealSource[]).map((source) => (
-            <button
-              key={source}
-              type="button"
-              onClick={() => update('source', source)}
-              className={chipClass(form.source === source)}
-            >
-              {MEAL_SOURCE_LABELS[source]}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div>
         <label className="text-xs font-medium text-slate-500 block mb-1.5">Calories</label>
         <input
           type="number"
@@ -280,66 +268,110 @@ export function MealForm({
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        {(
-          [
-            ['protein', 'Protein (g)'],
-            ['carbs', 'Carbs (g)'],
-            ['fat', 'Fat (g)'],
-            ['saturatedFat', 'Saturated fat (g)'],
-            ['fibre', 'Fibre (g)'],
-            ['sugar', 'Sugar (g)'],
-            ['salt', 'Salt (g)'],
-          ] as const
-        ).map(([key, label]) => (
-          <div key={key}>
-            <label className="text-xs font-medium text-slate-500 block mb-1.5">{label}</label>
-            <input
-              type="number"
-              inputMode="decimal"
-              min={0}
-              value={form[key] || ''}
-              onChange={(e) => update(key, Number(e.target.value) || 0)}
-              className={inputClass}
+      {quickMode && !showMoreOptions && (
+        <div>
+          <label className="text-xs font-medium text-slate-500 block mb-1.5">Protein (optional)</label>
+          <input
+            type="number"
+            inputMode="decimal"
+            min={0}
+            value={form.protein || ''}
+            onChange={(e) => update('protein', Number(e.target.value) || 0)}
+            className={inputClass}
+          />
+        </div>
+      )}
+
+      {quickMode && !showMoreOptions && (
+        <button
+          type="button"
+          onClick={() => setShowMoreOptions(true)}
+          className="w-full text-sm text-teal-600 py-2 rounded-xl border border-dashed border-teal-200"
+        >
+          More options (barcode, AI, triggers, full macros…)
+        </button>
+      )}
+
+      {(!quickMode || showMoreOptions) && (
+        <>
+          <div>
+            <label className="text-xs font-medium text-slate-500 block mb-1.5">Source</label>
+            <div className="flex flex-wrap gap-2">
+              {(Object.keys(MEAL_SOURCE_LABELS) as MealSource[]).map((source) => (
+                <button
+                  key={source}
+                  type="button"
+                  onClick={() => update('source', source)}
+                  className={chipClass(form.source === source)}
+                >
+                  {MEAL_SOURCE_LABELS[source]}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            {(
+              [
+                ['protein', 'Protein (g)'],
+                ['carbs', 'Carbs (g)'],
+                ['fat', 'Fat (g)'],
+                ['saturatedFat', 'Saturated fat (g)'],
+                ['fibre', 'Fibre (g)'],
+                ['sugar', 'Sugar (g)'],
+                ['salt', 'Salt (g)'],
+              ] as const
+            ).map(([key, label]) => (
+              <div key={key}>
+                <label className="text-xs font-medium text-slate-500 block mb-1.5">{label}</label>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  min={0}
+                  value={form[key] || ''}
+                  onChange={(e) => update(key, Number(e.target.value) || 0)}
+                  className={inputClass}
+                />
+              </div>
+            ))}
+          </div>
+
+          <div>
+            <label className="text-xs font-medium text-slate-500 block mb-1.5">Portion size</label>
+            <div className="flex flex-wrap gap-2">
+              {(Object.keys(PORTION_SIZE_LABELS) as PortionSize[]).map((size) => (
+                <button
+                  key={size}
+                  type="button"
+                  onClick={() => update('portionSize', size)}
+                  className={chipClass(form.portionSize === size)}
+                >
+                  {PORTION_SIZE_LABELS[size]}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-medium text-slate-500 block mb-2">Trigger tags</label>
+            <TriggerTagSelector
+              selected={form.triggerTags}
+              onChange={(tags) => update('triggerTags', tags)}
             />
           </div>
-        ))}
-      </div>
 
-      <div>
-        <label className="text-xs font-medium text-slate-500 block mb-1.5">Portion size</label>
-        <div className="flex flex-wrap gap-2">
-          {(Object.keys(PORTION_SIZE_LABELS) as PortionSize[]).map((size) => (
-            <button
-              key={size}
-              type="button"
-              onClick={() => update('portionSize', size)}
-              className={chipClass(form.portionSize === size)}
-            >
-              {PORTION_SIZE_LABELS[size]}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div>
-        <label className="text-xs font-medium text-slate-500 block mb-2">Trigger tags</label>
-        <TriggerTagSelector
-          selected={form.triggerTags}
-          onChange={(tags) => update('triggerTags', tags)}
-        />
-      </div>
-
-      <div>
-        <label className="text-xs font-medium text-slate-500 block mb-1.5">Notes</label>
-        <textarea
-          value={form.notes}
-          onChange={(e) => update('notes', e.target.value)}
-          rows={2}
-          className={inputClass}
-          placeholder="Optional"
-        />
-      </div>
+          <div>
+            <label className="text-xs font-medium text-slate-500 block mb-1.5">Notes</label>
+            <textarea
+              value={form.notes}
+              onChange={(e) => update('notes', e.target.value)}
+              rows={2}
+              className={inputClass}
+              placeholder="Optional"
+            />
+          </div>
+        </>
+      )}
 
       {riskAssessment && <RiskCard assessment={riskAssessment} />}
 

@@ -22,11 +22,18 @@ export type CheckInFormValues = {
   stressLevel: number;
   energyLevel: number;
   notes: string;
+  selectedIssueIds: string[];
 };
+
+interface ActiveIssue {
+  id: string;
+  name: string;
+}
 
 interface DailyCheckInFormProps {
   onSubmit: (values: CheckInFormValues) => void;
   onCancel?: () => void;
+  activeIssues?: ActiveIssue[];
 }
 
 type SymptomKey =
@@ -52,8 +59,9 @@ const options: { key: SymptomKey; label: string }[] = [
   { key: 'other', label: 'Other' },
 ];
 
-export function DailyCheckInForm({ onSubmit, onCancel }: DailyCheckInFormProps) {
+export function DailyCheckInForm({ onSubmit, onCancel, activeIssues = [] }: DailyCheckInFormProps) {
   const [selected, setSelected] = useState<SymptomKey[]>([]);
+  const [selectedIssues, setSelectedIssues] = useState<string[]>([]);
   const [stressLevel, setStressLevel] = useState(5);
   const [energyLevel, setEnergyLevel] = useState(5);
   const [notes, setNotes] = useState('');
@@ -69,6 +77,12 @@ export function DailyCheckInForm({ onSubmit, onCancel }: DailyCheckInFormProps) 
         ? filtered.filter((k) => k !== key)
         : [...filtered, key];
     });
+  };
+
+  const toggleIssue = (id: string) => {
+    setSelectedIssues((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+    );
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -96,6 +110,7 @@ export function DailyCheckInForm({ onSubmit, onCancel }: DailyCheckInFormProps) 
       stressLevel,
       energyLevel,
       notes,
+      selectedIssueIds: selectedIssues,
     });
   };
 
@@ -109,6 +124,13 @@ export function DailyCheckInForm({ onSubmit, onCancel }: DailyCheckInFormProps) 
     }
     return 'w-full px-4 py-4 rounded-xl text-left text-sm font-medium min-h-[52px] bg-teal-500 text-white';
   };
+
+  const issueChipClass = (id: string) =>
+    `px-3 py-2 rounded-xl text-sm font-medium min-h-[40px] ${
+      selectedIssues.includes(id)
+        ? 'bg-teal-500 text-white'
+        : 'bg-slate-100 text-slate-600'
+    }`;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
@@ -126,6 +148,24 @@ export function DailyCheckInForm({ onSubmit, onCancel }: DailyCheckInFormProps) 
           </button>
         ))}
       </div>
+
+      {activeIssues.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-slate-500">Which issues apply today?</p>
+          <div className="flex flex-wrap gap-2">
+            {activeIssues.map((issue) => (
+              <button
+                key={issue.id}
+                type="button"
+                onClick={() => toggleIssue(issue.id)}
+                className={issueChipClass(issue.id)}
+              >
+                {issue.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {!selected.includes('noSymptoms') && selected.length > 0 && (
         <div className="space-y-3">

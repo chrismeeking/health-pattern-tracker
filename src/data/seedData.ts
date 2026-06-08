@@ -195,10 +195,8 @@ export function createDemoData(): AppData {
         targetWeight: 85,
         activityLevel: 'light',
         goalType: 'improveDigestion',
-        enabledModules: ['nutrition', 'macros', 'weight', 'water', 'exercise', 'healthIssues', 'digestive', 'goals'],
+        enabledModules: ['nutrition', 'healthIssues', 'digestive'],
         dailyCalorieTarget: 2000,
-        proteinTarget: 120,
-        waterTarget: 2500,
       },
       {
         id: jennyId,

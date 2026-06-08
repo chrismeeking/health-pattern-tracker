@@ -21,6 +21,7 @@ import { CreateFavouritePage, EditFavouritePage } from '@/pages/FavouriteFormPag
 import { FavouritesPage } from '@/pages/FavouritesPage';
 import { SavedFoodsPage } from '@/pages/SavedFoodsPage';
 import { ScanBarcodePage } from '@/pages/ScanBarcodePage';
+import { TimelinePage } from '@/pages/TimelinePage';
 
 export default function App() {
   return (
@@ -51,6 +52,8 @@ export default function App() {
               <Route path="/health/goals/new" element={<CreateGoalPage />} />
               <Route path="/health/goals/:id/edit" element={<EditGoalPage />} />
               <Route path="/insights" element={<InsightsPage />} />
+              <Route path="/patterns/timeline" element={<TimelinePage />} />
+              <Route path="/timeline" element={<TimelinePage />} />
               <Route path="/profile" element={<ProfileSettingsPage />} />
             </Route>
           </Routes>

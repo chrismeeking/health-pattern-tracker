@@ -157,6 +157,33 @@ export function showInsightsNav(profile: Profile): boolean {
   return hasPatternInsights(profile) || hasProgressInsights(profile);
 }
 
+/** Show Health tab in bottom nav when weight, goals, macros, exercise, or health tracking is enabled. */
+export function showHealthNav(profile: Profile): boolean {
+  return (
+    hasHealthTracking(profile) ||
+    hasModule(profile, 'weight') ||
+    hasModule(profile, 'goals') ||
+    hasModule(profile, 'macros') ||
+    hasModule(profile, 'exercise')
+  );
+}
+
+/** Digestive/health-patterns home when health tracking is on and nutrition metrics are not the focus. */
+export function isDigestivePrimaryHome(profile: Profile): boolean {
+  if (!hasHealthTracking(profile)) return false;
+  const hasNutritionMetrics =
+    hasModule(profile, 'macros') || hasModule(profile, 'weight');
+  return !hasNutritionMetrics;
+}
+
+/** Nutrition-focused home when meals/macros/weight matter and digestive is not primary. */
+export function isNutritionPrimaryHome(profile: Profile): boolean {
+  if (!hasModule(profile, 'nutrition')) return false;
+  const hasNutritionMetrics =
+    hasModule(profile, 'macros') || hasModule(profile, 'weight');
+  return hasNutritionMetrics && !isDigestivePrimaryHome(profile);
+}
+
 export function normalizeEnabledModules(modules: ProfileModule[]): ProfileModule[] {
   const unique = [...new Set(modules.filter((m) => ALL_PROFILE_MODULES.includes(m)))];
   return unique.length > 0 ? unique : ['nutrition'];

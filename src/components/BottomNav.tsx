@@ -1,36 +1,47 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import { useApp } from '@/hooks/useAppData';
 import { cn } from '@/utils/helpers';
-import { showInsightsNav } from '@/utils/profileModules';
+import { showHealthNav } from '@/utils/profileModules';
 import { Icon, type IconName } from './Icon';
 
-const navItems = [
-  { to: '/', label: 'Home', icon: 'home' as IconName, match: (path: string) => path === '/' },
-  { to: '/meals', label: 'Meals', icon: 'meals' as IconName, match: (path: string) => path.startsWith('/meals') },
-  { to: '/add', label: 'Add', icon: 'plus' as IconName, isAdd: true },
+interface NavItem {
+  to: string;
+  label: string;
+  icon: IconName;
+  isAdd?: boolean;
+  requiresHealth?: boolean;
+  match?: (path: string) => boolean;
+}
+
+const baseNavItems: NavItem[] = [
+  { to: '/', label: 'Home', icon: 'home', match: (path) => path === '/' },
+  { to: '/meals', label: 'Meals', icon: 'meals', match: (path) => path.startsWith('/meals') },
+  { to: '/add', label: 'Add', icon: 'plus', isAdd: true },
   {
-    to: '/insights',
-    label: 'Insights',
-    icon: 'insights' as IconName,
-    match: (path: string) => path.startsWith('/insights'),
-    requiresInsights: true,
+    to: '/health',
+    label: 'Health',
+    icon: 'health',
+    match: (path) =>
+      path.startsWith('/health') ||
+      path.startsWith('/issues') ||
+      path.startsWith('/patterns'),
+    requiresHealth: true,
   },
   {
     to: '/profile',
     label: 'Settings',
-    icon: 'settings' as IconName,
-    match: (path: string) =>
-      path.startsWith('/profile') || path.startsWith('/health') || path.startsWith('/issues'),
+    icon: 'settings',
+    match: (path) => path.startsWith('/profile'),
   },
 ];
 
 export function BottomNav() {
   const location = useLocation();
   const { activeProfile } = useApp();
-  const insightsEnabled = activeProfile ? showInsightsNav(activeProfile) : false;
+  const healthEnabled = activeProfile ? showHealthNav(activeProfile) : false;
 
-  const visibleItems = navItems.filter(
-    (item) => !item.requiresInsights || insightsEnabled
+  const visibleItems = baseNavItems.filter(
+    (item) => !item.requiresHealth || healthEnabled
   );
 
   return (

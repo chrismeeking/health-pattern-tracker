@@ -14,6 +14,8 @@ export const EXERCISE_MET: Record<ExerciseType, number> = {
   swimming: 6.0,
   gym: 5.0,
   yoga: 2.5,
+  pilates: 3.0,
+  reformerPilates: 4.0,
   housework: 3.0,
   other: 4.0,
 };
@@ -25,7 +27,9 @@ export const EXERCISE_LABELS: Record<ExerciseType, string> = {
   cycling: 'Cycling',
   swimming: 'Swimming',
   gym: 'Gym / weights',
-  yoga: 'Yoga / pilates',
+  yoga: 'Yoga',
+  pilates: 'Mat pilates',
+  reformerPilates: 'Reformer pilates',
   housework: 'Housework / gardening',
   other: 'Other activity',
 };

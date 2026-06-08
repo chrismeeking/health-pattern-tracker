@@ -14,9 +14,15 @@ interface ModulePresetPickerProps {
   onChange: (modules: ProfileModule[]) => void;
 }
 
+const HEALTH_PATTERN_MODULES: ProfileModule[] = ['healthIssues', 'digestive'];
+const CUSTOM_MODULES = ALL_PROFILE_MODULES.filter(
+  (mod) => !HEALTH_PATTERN_MODULES.includes(mod)
+);
+
 export function ModulePresetPicker({ modules, onChange }: ModulePresetPickerProps) {
   const activePreset = detectPreset(modules);
   const normalized = normalizeEnabledModules(modules);
+  const healthPatternsOn = HEALTH_PATTERN_MODULES.every((mod) => normalized.includes(mod));
 
   const applyPreset = (presetId: ModulePresetId) => {
     if (presetId === 'custom') return;
@@ -26,6 +32,14 @@ export function ModulePresetPicker({ modules, onChange }: ModulePresetPickerProp
 
   const toggle = (mod: ProfileModule) => {
     onChange(toggleModuleList(normalized, mod));
+  };
+
+  const toggleHealthPatterns = () => {
+    if (healthPatternsOn) {
+      onChange(normalized.filter((m) => !HEALTH_PATTERN_MODULES.includes(m)));
+    } else {
+      onChange(normalizeEnabledModules([...normalized, ...HEALTH_PATTERN_MODULES]));
+    }
   };
 
   const chipClass = (selected: boolean) =>
@@ -63,7 +77,14 @@ export function ModulePresetPicker({ modules, onChange }: ModulePresetPickerProp
           Customise modules {activePreset === 'custom' ? '(custom)' : ''}
         </p>
         <div className="flex flex-wrap gap-2">
-          {ALL_PROFILE_MODULES.map((mod) => (
+          <button
+            type="button"
+            onClick={toggleHealthPatterns}
+            className={chipClass(healthPatternsOn)}
+          >
+            Health patterns
+          </button>
+          {CUSTOM_MODULES.map((mod) => (
             <button
               key={mod}
               type="button"
