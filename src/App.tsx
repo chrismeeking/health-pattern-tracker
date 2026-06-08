@@ -10,6 +10,7 @@ import { ProfileSettingsPage } from '@/pages/ProfileSettingsPage';
 import { AddMealPage, EditMealPage } from '@/pages/MealFormPage';
 import { AddWaterPage } from '@/pages/AddWaterPage';
 import { AddWeightPage } from '@/pages/AddWeightPage';
+import { AddExercisePage } from '@/pages/AddExercisePage';
 import { HealthPage } from '@/pages/HealthPage';
 import { CreateGoalPage, EditGoalPage } from '@/pages/GoalFormPage';
 import { IssuesPage } from '@/pages/IssuesPage';
@@ -41,6 +42,7 @@ export default function App() {
               <Route path="/favourites/:id/edit" element={<EditFavouritePage />} />
               <Route path="/saved-foods" element={<SavedFoodsPage />} />
               <Route path="/add/weight" element={<AddWeightPage />} />
+              <Route path="/add/exercise" element={<AddExercisePage />} />
               <Route path="/add/water" element={<AddWaterPage />} />
               <Route path="/add/symptom" element={<LogSymptomPage />} />
               <Route path="/add/check-in" element={<DailyCheckInPage />} />

@@ -5,6 +5,7 @@ export const ALL_PROFILE_MODULES: ProfileModule[] = [
   'macros',
   'weight',
   'water',
+  'exercise',
   'healthIssues',
   'digestive',
   'goals',
@@ -16,6 +17,7 @@ export const DEFAULT_PROFILE_MODULES: ProfileModule[] = [
   'macros',
   'weight',
   'water',
+  'exercise',
   'goals',
 ];
 
@@ -44,7 +46,7 @@ export const MODULE_PRESETS: ModulePreset[] = [
     id: 'nutritionFitness',
     label: 'Nutrition & fitness',
     description: 'Calories, macros, weight, water, and weekly progress',
-    modules: ['nutrition', 'macros', 'weight', 'water', 'goals'],
+    modules: ['nutrition', 'macros', 'weight', 'water', 'exercise', 'goals'],
   },
   {
     id: 'simpleCalories',
@@ -74,6 +76,20 @@ export function migrateProfileModules(profile: Profile, data?: AppData): Profile
 
   if (stored && stored.length > 0) {
     const normalized = normalizeEnabledModules(stored);
+    const legacyEverythingKey = [
+      'nutrition',
+      'macros',
+      'weight',
+      'water',
+      'healthIssues',
+      'digestive',
+      'goals',
+    ]
+      .sort()
+      .join(',');
+    if ([...normalized].sort().join(',') === legacyEverythingKey) {
+      return { ...profile, enabledModules: [...ALL_PROFILE_MODULES] };
+    }
     const unchanged =
       normalized.length === stored.length && normalized.every((mod) => stored.includes(mod));
     return unchanged ? profile : { ...profile, enabledModules: normalized };
@@ -96,6 +112,7 @@ export function migrateProfileModules(profile: Profile, data?: AppData): Profile
     if (data.weightEntries.some((w) => w.profileId === profileId)) inferred.add('weight');
     if (data.waterEntries.some((w) => w.profileId === profileId)) inferred.add('water');
     if (data.goals.some((g) => g.profileId === profileId)) inferred.add('goals');
+    if (data.exerciseEntries?.some((e) => e.profileId === profileId)) inferred.add('exercise');
     if (data.issues.some((i) => i.profileId === profileId)) inferred.add('healthIssues');
     if (data.symptomEpisodes.some((s) => s.profileId === profileId)) inferred.add('digestive');
     if (data.dailyCheckIns.some((c) => c.profileId === profileId)) inferred.add('digestive');

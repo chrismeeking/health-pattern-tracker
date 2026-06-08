@@ -745,6 +745,7 @@ export async function pullFromCloud(meta: SyncMeta): Promise<PullResult> {
             createdAt: row.created_at,
             updatedAt: row.updated_at,
           })),
+      exerciseEntries: [],
       activeProfileId: profiles[0]?.id ?? null,
       demoLoaded: false,
     };

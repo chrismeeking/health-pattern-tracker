@@ -119,7 +119,7 @@ export function ProfileSettingsPage() {
       name: newName.trim(),
       activityLevel: 'moderate',
       goalType: 'generalHealth',
-      enabledModules: ['nutrition', 'macros', 'weight', 'water', 'goals'],
+      enabledModules: ['nutrition', 'macros', 'weight', 'water', 'exercise', 'goals'],
     };
     const profile: Profile = {
       ...baseProfile,
@@ -152,6 +152,7 @@ export function ProfileSettingsPage() {
         symptomEpisodes: d.symptomEpisodes.filter((s) => s.profileId !== activeProfile.id),
         dailyCheckIns: d.dailyCheckIns.filter((c) => c.profileId !== activeProfile.id),
         weightEntries: d.weightEntries.filter((w) => w.profileId !== activeProfile.id),
+        exerciseEntries: d.exerciseEntries.filter((e) => e.profileId !== activeProfile.id),
         waterEntries: d.waterEntries.filter((w) => w.profileId !== activeProfile.id),
         goals: d.goals.filter((g) => g.profileId !== activeProfile.id),
         favouriteMeals: d.favouriteMeals.filter((f) => f.profileId !== activeProfile.id),
@@ -458,7 +459,8 @@ export function ProfileSettingsPage() {
                   ))}
                 </select>
                 <p className="text-[10px] text-slate-400 mt-1">
-                  Changing goal type updates nutrition targets automatically.
+                  Weight loss (NHS pace) uses a ~600 kcal/day deficit (NICE CG189). Gentle weight
+                  loss is slower. Tap Apply on suggested targets after changing.
                 </p>
               </div>
 
@@ -531,6 +533,13 @@ export function ProfileSettingsPage() {
                 <p className="text-[10px] text-slate-400">
                   {suggestedTargets.calorieBasis} {suggestedTargets.macroBasis}
                 </p>
+                {suggestedTargets.guidanceNotes.length > 0 && (
+                  <ul className="text-[10px] text-slate-400 space-y-0.5 list-disc pl-4">
+                    {suggestedTargets.guidanceNotes.map((note) => (
+                      <li key={note}>{note}</li>
+                    ))}
+                  </ul>
+                )}
               </div>
             )}
 

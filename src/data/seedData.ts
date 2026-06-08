@@ -195,7 +195,7 @@ export function createDemoData(): AppData {
         targetWeight: 85,
         activityLevel: 'light',
         goalType: 'improveDigestion',
-        enabledModules: ['nutrition', 'macros', 'weight', 'water', 'healthIssues', 'digestive', 'goals'],
+        enabledModules: ['nutrition', 'macros', 'weight', 'water', 'exercise', 'healthIssues', 'digestive', 'goals'],
         dailyCalorieTarget: 2000,
         proteinTarget: 120,
         waterTarget: 2500,
@@ -209,10 +209,10 @@ export function createDemoData(): AppData {
         currentWeight: 68,
         targetWeight: 65,
         activityLevel: 'moderate',
-        goalType: 'slowWeightLoss',
-        enabledModules: ['nutrition', 'macros', 'weight', 'water', 'goals'],
-        dailyCalorieTarget: 1800,
-        proteinTarget: 110,
+        goalType: 'moderateWeightLoss',
+        enabledModules: ['nutrition', 'macros', 'weight', 'water', 'exercise', 'goals'],
+        dailyCalorieTarget: 1400,
+        proteinTarget: 80,
         carbTarget: 180,
         fatTarget: 60,
         fibreTarget: 30,
@@ -368,6 +368,17 @@ export function createDemoData(): AppData {
     waterEntries: [
       { id: 'wa-c1', profileId: chrisId, dateTime: mealTime(0, 10), amountMl: 850 },
       { id: 'wa-j1', profileId: jennyId, dateTime: mealTime(0, 10), amountMl: 1500 },
+    ],
+    exerciseEntries: [
+      {
+        id: 'ex-j1',
+        profileId: jennyId,
+        dateTime: mealTime(0, 7),
+        activity: 'briskWalking',
+        durationMinutes: 40,
+        caloriesBurned: 195,
+        notes: 'Morning walk',
+      },
     ],
     goals: [
       {

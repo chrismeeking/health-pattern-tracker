@@ -16,6 +16,7 @@ interface QuickLink {
 const ALL_LINKS: QuickLink[] = [
   { id: 'weight', to: '/health', label: 'Weight', icon: 'health', desc: 'Weight, BMI & goals', module: 'weight' },
   { id: 'log-weight', to: '/add/weight', label: 'Log weight', icon: 'check', desc: "Record today's weight", module: 'weight' },
+  { id: 'exercise', to: '/add/exercise', label: 'Exercise', icon: 'check', desc: 'Log activity & earn kcal', module: 'exercise' },
   { id: 'goals', to: '/health', label: 'Goals', icon: 'health', desc: 'Goals & weekly progress', module: 'goals' },
   { id: 'issues', to: '/issues', label: 'Issues', icon: 'issues', desc: 'Health patterns', module: 'health' },
   { id: 'check-in', to: '/add/check-in', label: 'Daily check-in', icon: 'check', desc: 'How are you today?', module: 'health' },

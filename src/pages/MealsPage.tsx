@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { useApp } from '@/hooks/useAppData';
 import { getProfileData, removeById, generateId } from '@/services/storage';
 import { getMealsForDate, getTodayNutrition } from '@/utils/nutrition';
+import { getTodayExerciseBurn } from '@/utils/exercise';
+import { hasModule } from '@/utils/profileModules';
 import { todayISO, nowISO } from '@/utils/helpers';
 import { DailyNutritionSummary } from '@/components/DailyNutritionSummary';
 import { MacroSummary } from '@/components/MacroSummary';
@@ -28,6 +30,8 @@ export function MealsPage() {
     .sort((a, b) => new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime());
 
   const todayTotals = getTodayNutrition(profileData.meals);
+  const todayExercise = getTodayExerciseBurn(profileData.exerciseEntries);
+  const showExercise = hasModule(activeProfile, 'exercise');
   const todayWater = profileData.waterEntries
     .filter((e) => e.dateTime.startsWith(today))
     .reduce((s, e) => s + e.amountMl, 0);
@@ -63,6 +67,11 @@ export function MealsPage() {
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-xl font-semibold text-slate-800">Meals</h1>
         <div className="flex gap-2">
+          {showExercise && (
+            <Link to="/add/exercise">
+              <Button variant="outline" size="sm">Exercise</Button>
+            </Link>
+          )}
           <Link to="/add/water">
             <Button variant="outline" size="sm">Water</Button>
           </Link>
@@ -72,7 +81,12 @@ export function MealsPage() {
         </div>
       </div>
 
-      <DailyNutritionSummary totals={todayTotals} profile={activeProfile} />
+      <DailyNutritionSummary
+        totals={todayTotals}
+        profile={activeProfile}
+        exerciseBurned={todayExercise}
+        showExercise={showExercise}
+      />
 
       {activeProfile.enabledModules.includes('macros') && (
         <MacroSummary totals={todayTotals} profile={activeProfile} />

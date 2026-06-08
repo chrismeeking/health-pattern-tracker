@@ -42,9 +42,19 @@ export function getTodayNutrition(meals: Meal[]): NutritionTotals {
   return sumMealTotals(getMealsForDate(meals, todayISO()));
 }
 
-export function getCaloriesRemaining(consumed: number, target?: number): number {
+/** Net remaining = daily target + exercise earned − food consumed (MyFitnessPal-style). */
+export function getCaloriesRemaining(
+  consumed: number,
+  target?: number,
+  exerciseEarned = 0
+): number {
   if (!target) return 0;
-  return Math.max(0, target - consumed);
+  return Math.round(target + exerciseEarned - consumed);
+}
+
+export function getNetCalorieTarget(target?: number, exerciseEarned = 0): number {
+  if (!target) return 0;
+  return Math.round(target + exerciseEarned);
 }
 
 export function sumWaterForDate(entries: WaterEntry[], date: string): number {

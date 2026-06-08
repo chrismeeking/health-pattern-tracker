@@ -20,7 +20,7 @@ import { Card } from './Card';
 const GOAL_TYPES = Object.keys(GOAL_TYPE_LABELS) as GoalType[];
 const ACTIVITY_LEVELS: ActivityLevel[] = ['sedentary', 'light', 'moderate', 'active'];
 
-const DEFAULT_MODULES: ProfileModule[] = ['nutrition', 'macros', 'weight', 'water', 'goals'];
+const DEFAULT_MODULES: ProfileModule[] = ['nutrition', 'macros', 'weight', 'water', 'exercise', 'goals'];
 
 export function OnboardingPanel() {
   const { update, loadDemo } = useApp();
@@ -180,6 +180,9 @@ export function OnboardingPanel() {
               {suggestedTargets.dailyCalorieTarget} kcal · P {suggestedTargets.proteinTarget}g ·
               C {suggestedTargets.carbTarget}g · F {suggestedTargets.fatTarget}g · Fibre{' '}
               {suggestedTargets.fibreTarget}g
+            </p>
+            <p className="text-[10px] text-slate-400 mt-1 dark:text-slate-500">
+              NHS / NICE-backed estimates — adjust anytime in Settings.
             </p>
           </div>
         )}

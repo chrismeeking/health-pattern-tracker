@@ -249,6 +249,7 @@ export function isNutritionFocusedProfile(profile: Profile): boolean {
   return (
     profile.enabledModules.includes('macros') ||
     profile.goalType === 'slowWeightLoss' ||
+    profile.goalType === 'moderateWeightLoss' ||
     profile.goalType === 'muscleGain'
   );
 }

@@ -11,6 +11,7 @@ const defaultData: AppData = {
   dailyCheckIns: [],
   weightEntries: [],
   waterEntries: [],
+  exerciseEntries: [],
   goals: [],
   favouriteMeals: [],
   savedFoods: [],
@@ -28,6 +29,7 @@ export function loadData(): AppData {
       ...parsed,
       favouriteMeals: parsed.favouriteMeals ?? [],
       savedFoods: parsed.savedFoods ?? [],
+      exerciseEntries: parsed.exerciseEntries ?? [],
     };
     const migrated = migrateAppData(loaded);
     if (migrated !== loaded) {
@@ -73,6 +75,7 @@ export function getProfileData(data: AppData, profileId: string) {
     dailyCheckIns: data.dailyCheckIns.filter((c) => c.profileId === profileId),
     weightEntries: data.weightEntries.filter((w) => w.profileId === profileId),
     waterEntries: data.waterEntries.filter((w) => w.profileId === profileId),
+    exerciseEntries: data.exerciseEntries.filter((e) => e.profileId === profileId),
     goals: data.goals.filter((g) => g.profileId === profileId),
     favouriteMeals: data.favouriteMeals.filter((f) => f.profileId === profileId),
     savedFoods: data.savedFoods.filter(

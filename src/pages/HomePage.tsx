@@ -22,6 +22,7 @@ import {
   getWeightSummary,
 } from '@/utils/health';
 import { calculateBmi, getBmiCategory } from '@/utils/bmi';
+import { getTodayExerciseBurn } from '@/utils/exercise';
 import {
   hasHealthTracking,
   hasModule,
@@ -56,6 +57,7 @@ export function HomePage() {
 
   const profileData = getProfileData(data, activeProfile.id);
   const todayTotals = getTodayNutrition(profileData.meals);
+  const todayExercise = getTodayExerciseBurn(profileData.exerciseEntries);
   const todayWater = getTodayWater(profileData.waterEntries);
   const recentMeals = [...profileData.meals]
     .sort((a, b) => new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime())
@@ -65,6 +67,7 @@ export function HomePage() {
   const showMacros = hasModule(activeProfile, 'macros');
   const showWater = hasModule(activeProfile, 'water');
   const showWeight = hasModule(activeProfile, 'weight');
+  const showExercise = hasModule(activeProfile, 'exercise');
   const showGoals = hasModule(activeProfile, 'goals');
   const showHealth = hasHealthTracking(activeProfile);
   const macroFocused = isMacroFocusedProfile(activeProfile);
@@ -330,7 +333,12 @@ export function HomePage() {
       )}
 
       {showNutrition && (
-        <DailyNutritionSummary totals={todayTotals} profile={activeProfile} />
+        <DailyNutritionSummary
+          totals={todayTotals}
+          profile={activeProfile}
+          exerciseBurned={todayExercise}
+          showExercise={showExercise}
+        />
       )}
 
       {showMacros &&

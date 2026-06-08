@@ -3,6 +3,7 @@ export type ActivityLevel = 'sedentary' | 'light' | 'moderate' | 'active';
 export type GoalType =
   | 'maintain'
   | 'slowWeightLoss'
+  | 'moderateWeightLoss'
   | 'improveDigestion'
   | 'fattyLiverSupport'
   | 'muscleGain'
@@ -13,9 +14,31 @@ export type ProfileModule =
   | 'macros'
   | 'weight'
   | 'water'
+  | 'exercise'
   | 'healthIssues'
   | 'digestive'
   | 'goals';
+
+export type ExerciseType =
+  | 'walking'
+  | 'briskWalking'
+  | 'running'
+  | 'cycling'
+  | 'swimming'
+  | 'gym'
+  | 'yoga'
+  | 'housework'
+  | 'other';
+
+export interface ExerciseEntry {
+  id: string;
+  profileId: string;
+  dateTime: string;
+  activity: ExerciseType;
+  durationMinutes: number;
+  caloriesBurned: number;
+  notes?: string;
+}
 
 export interface Profile {
   id: string;
@@ -356,7 +379,7 @@ export const AI_STATUS_LABEL =
 export const FOOD_LOOKUP_STATUS_LABEL =
   'Open Food Facts barcode lookup with saved-food cache; local UK meal database for meal names';
 
-export const APP_VERSION = '0.1.1';
+export const APP_VERSION = '0.1.2';
 
 export interface AppData {
   profiles: Profile[];
@@ -366,6 +389,7 @@ export interface AppData {
   dailyCheckIns: DailyCheckIn[];
   weightEntries: WeightEntry[];
   waterEntries: WaterEntry[];
+  exerciseEntries: ExerciseEntry[];
   goals: Goal[];
   favouriteMeals: FavouriteMeal[];
   savedFoods: FoodItem[];
@@ -386,6 +410,7 @@ export const MODULE_LABELS: Record<ProfileModule, string> = {
   macros: 'Macros',
   weight: 'Weight',
   water: 'Water',
+  exercise: 'Exercise',
   healthIssues: 'Health issues',
   digestive: 'Digestive',
   goals: 'Goals',
@@ -406,7 +431,8 @@ export const GOAL_CATEGORY_LABELS: Record<GoalCategory, string> = {
 
 export const GOAL_TYPE_LABELS: Record<GoalType, string> = {
   maintain: 'Maintain weight',
-  slowWeightLoss: 'Slow weight loss',
+  slowWeightLoss: 'Gentle weight loss',
+  moderateWeightLoss: 'Weight loss (NHS pace)',
   improveDigestion: 'Improve digestion',
   fattyLiverSupport: 'Fatty liver support',
   muscleGain: 'Muscle gain',

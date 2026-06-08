@@ -17,6 +17,7 @@ const ACTIONS: AddAction[] = [
   { to: '/add/meal', label: 'Add Meal', icon: '🍽️', desc: 'Log food quickly', always: true },
   { to: '/health', label: 'Health & Goals', icon: '❤️', desc: 'Weight and progress', module: 'goals' },
   { to: '/add/weight', label: 'Add Weight', icon: '⚖️', desc: 'Record your weight', module: 'weight' },
+  { to: '/add/exercise', label: 'Log Exercise', icon: '🏃', desc: 'Earn calories back', module: 'exercise' },
   { to: '/add/water', label: 'Add Water', icon: '💧', desc: 'Track hydration', module: 'water' },
   { to: '/add/symptom', label: 'Log Symptom', icon: '🩺', desc: 'Record a symptom episode', module: 'health' },
   { to: '/add/check-in', label: 'Daily Check-In', icon: '✅', desc: 'How are you today?', module: 'health' },
