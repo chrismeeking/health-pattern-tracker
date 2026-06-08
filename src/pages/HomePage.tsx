@@ -160,14 +160,14 @@ export function HomePage() {
             )}
             <Link to="/health">
               <StatCard
-                label="Active goal"
+                label="Active action"
                 value={activeGoal ? '1' : 'Start'}
                 subtext={
                   activeGoal
                     ? activeGoal.title.length > 40
                       ? `${activeGoal.title.slice(0, 40)}…`
                       : activeGoal.title
-                    : 'Try a small experiment'
+                    : 'Try a small health action'
                 }
               />
             </Link>

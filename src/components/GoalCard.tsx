@@ -3,6 +3,7 @@ import { GOAL_CATEGORY_LABELS } from '@/types';
 import { Card } from './Card';
 import { Button } from './Button';
 import { EntityActions } from './EntityActions';
+import { Icon } from './Icon';
 
 interface GoalCardProps {
   goal: Goal;
@@ -32,7 +33,9 @@ export function GoalCard({
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-teal-500">{goal.status === 'completed' ? '✓' : '🎯'}</span>
+            <span className="text-teal-500">
+              <Icon name={goal.status === 'completed' ? 'check' : 'health'} className="h-4 w-4" />
+            </span>
             <h3 className="font-medium text-slate-800 text-sm leading-snug">{goal.title}</h3>
           </div>
           {goal.description && !compact && (

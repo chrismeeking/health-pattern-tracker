@@ -36,7 +36,7 @@ export function WeeklyProgressCard({
   }
 
   items.push({
-    label: 'Goals completed',
+    label: 'Actions completed',
     value: String(progress.goalsCompleted),
   });
 
