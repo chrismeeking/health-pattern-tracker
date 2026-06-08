@@ -36,7 +36,7 @@ export function FavouriteMealCard({
         )}
       </div>
       <p className="text-xs text-slate-500">
-        P {favourite.protein}g · C {favourite.carbs}g · F {favourite.fat}g
+        P {favourite.protein}g · C {favourite.carbs}g · F {favourite.fat}g · Sat. {favourite.saturatedFat}g
       </p>
       {!pickMode && (
         <EntityActions

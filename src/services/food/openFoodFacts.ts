@@ -163,6 +163,9 @@ export async function fetchOpenFoodFactsBarcode(
   const servingGrams = parseServingGrams(servingSize);
   const servingMultiplier = servingGrams != null ? servingGrams / 100 : null;
   const nutriments = product.nutriments ?? {};
+  const fat = nutrient(nutriments, 'fat', servingMultiplier);
+  let saturatedFat = nutrient(nutriments, 'saturated-fat', servingMultiplier);
+  if (!saturatedFat && fat > 0) saturatedFat = roundMacro(fat * 0.4);
 
   return {
     found: true,
@@ -174,7 +177,8 @@ export async function fetchOpenFoodFactsBarcode(
       calories: calories(nutriments, servingMultiplier),
       protein: nutrient(nutriments, 'proteins', servingMultiplier),
       carbs: nutrient(nutriments, 'carbohydrates', servingMultiplier),
-      fat: nutrient(nutriments, 'fat', servingMultiplier),
+      fat,
+      saturatedFat,
       fibre: nutrient(nutriments, 'fiber', servingMultiplier),
       sugar: nutrient(nutriments, 'sugars', servingMultiplier),
       salt: nutrient(nutriments, 'salt', servingMultiplier),

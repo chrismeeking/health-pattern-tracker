@@ -154,6 +154,7 @@ export function ScanBarcodePage() {
       protein: formValues.protein,
       carbs: formValues.carbs,
       fat: formValues.fat,
+      saturatedFat: formValues.saturatedFat || undefined,
       fibre: formValues.fibre,
       sugar: formValues.sugar,
       salt: formValues.salt,
@@ -178,6 +179,7 @@ export function ScanBarcodePage() {
       protein: 0,
       carbs: 0,
       fat: 0,
+      saturatedFat: 0,
       fibre: 0,
       sugar: 0,
       salt: 0,
@@ -282,6 +284,7 @@ export function ScanBarcodePage() {
             <span>Protein: {scaledPreview.protein}g</span>
             <span>Carbs: {scaledPreview.carbs}g</span>
             <span>Fat: {scaledPreview.fat}g</span>
+            <span>Saturated fat: {scaledPreview.saturatedFat}g</span>
           </div>
 
           <div>

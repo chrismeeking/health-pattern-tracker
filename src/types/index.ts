@@ -80,6 +80,7 @@ export interface Meal {
   protein: number;
   carbs: number;
   fat: number;
+  saturatedFat?: number;
   fibre: number;
   sugar?: number;
   salt?: number;
@@ -253,6 +254,7 @@ export interface FoodItem {
   protein: number;
   carbs: number;
   fat: number;
+  saturatedFat: number;
   fibre: number;
   sugar: number;
   salt: number;
@@ -272,6 +274,7 @@ export interface FavouriteMeal {
   protein: number;
   carbs: number;
   fat: number;
+  saturatedFat: number;
   fibre: number;
   sugar: number;
   salt: number;

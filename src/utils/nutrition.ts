@@ -6,9 +6,16 @@ export interface NutritionTotals {
   protein: number;
   carbs: number;
   fat: number;
+  saturatedFat: number;
   fibre: number;
   sugar: number;
   salt: number;
+}
+
+/** Estimate saturated fat (g) from total fat when not explicitly known. */
+export function deriveSaturatedFat(totalFat: number, known?: number): number {
+  if (known != null && known > 0) return known;
+  return Math.round(totalFat * 0.4);
 }
 
 export function getMealsForDate(meals: Meal[], date: string): Meal[] {
@@ -22,11 +29,12 @@ export function sumMealTotals(meals: Meal[]): NutritionTotals {
       protein: acc.protein + m.protein,
       carbs: acc.carbs + m.carbs,
       fat: acc.fat + m.fat,
+      saturatedFat: acc.saturatedFat + (m.saturatedFat ?? 0),
       fibre: acc.fibre + m.fibre,
       sugar: acc.sugar + (m.sugar ?? 0),
       salt: acc.salt + (m.salt ?? 0),
     }),
-    { calories: 0, protein: 0, carbs: 0, fat: 0, fibre: 0, sugar: 0, salt: 0 }
+    { calories: 0, protein: 0, carbs: 0, fat: 0, saturatedFat: 0, fibre: 0, sugar: 0, salt: 0 }
   );
 }
 

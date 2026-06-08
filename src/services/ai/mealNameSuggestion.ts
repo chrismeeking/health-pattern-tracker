@@ -12,6 +12,7 @@ export interface SuggestedMealValues {
   protein?: number;
   carbs?: number;
   fat?: number;
+  saturatedFat?: number;
   fibre?: number;
   sugar?: number;
   salt?: number;
@@ -61,6 +62,7 @@ function mealToSuggestedValues(meal: Meal): SuggestedMealValues {
     protein: meal.protein,
     carbs: meal.carbs,
     fat: meal.fat,
+    saturatedFat: meal.saturatedFat ?? 0,
     fibre: meal.fibre,
     sugar: meal.sugar ?? 0,
     salt: meal.salt ?? 0,
@@ -78,11 +80,12 @@ function averageMeals(meals: Meal[]): SuggestedMealValues {
       protein: acc.protein + meal.protein,
       carbs: acc.carbs + meal.carbs,
       fat: acc.fat + meal.fat,
+      saturatedFat: acc.saturatedFat + (meal.saturatedFat ?? 0),
       fibre: acc.fibre + meal.fibre,
       sugar: acc.sugar + (meal.sugar ?? 0),
       salt: acc.salt + (meal.salt ?? 0),
     }),
-    { calories: 0, protein: 0, carbs: 0, fat: 0, fibre: 0, sugar: 0, salt: 0 }
+    { calories: 0, protein: 0, carbs: 0, fat: 0, saturatedFat: 0, fibre: 0, sugar: 0, salt: 0 }
   );
 
   return {
@@ -90,6 +93,7 @@ function averageMeals(meals: Meal[]): SuggestedMealValues {
     protein: Math.round(sum.protein / count),
     carbs: Math.round(sum.carbs / count),
     fat: Math.round(sum.fat / count),
+    saturatedFat: Math.round(sum.saturatedFat / count),
     fibre: Math.round(sum.fibre / count),
     sugar: Math.round(sum.sugar / count),
     salt: Math.round((sum.salt / count) * 10) / 10,
@@ -117,6 +121,7 @@ export function databaseEntryToSuggestion(entry: UkMealDatabaseEntry): MealNameS
       protein: entry.protein,
       carbs: entry.carbs,
       fat: entry.fat,
+      saturatedFat: entry.saturatedFat,
       fibre: entry.fibre,
       sugar: entry.sugar,
       salt: entry.salt,
@@ -204,6 +209,7 @@ function analysisToSuggestion(
       protein: analysis.protein,
       carbs: analysis.carbs,
       fat: analysis.fat,
+      saturatedFat: analysis.saturatedFat,
       fibre: analysis.fibre,
       sugar: analysis.sugar,
       salt: analysis.salt,

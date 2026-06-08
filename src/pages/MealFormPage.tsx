@@ -74,6 +74,8 @@ function buildMeal(
 
     fat: values.fat,
 
+    saturatedFat: values.saturatedFat || undefined,
+
     fibre: values.fibre,
 
     sugar: values.sugar || undefined,
@@ -211,6 +213,8 @@ export function AddMealPage() {
     carbs: 0,
 
     fat: 0,
+
+    saturatedFat: 0,
 
     fibre: 0,
 

@@ -184,7 +184,7 @@ export function MealNameSuggestionPanel({
       <p className="text-sm text-slate-700">
         <span className="font-semibold">{values.calories ?? 0} kcal</span>
         {' · '}
-        P {values.protein ?? 0}g · C {values.carbs ?? 0}g · F {values.fat ?? 0}g
+        P {values.protein ?? 0}g · C {values.carbs ?? 0}g · F {values.fat ?? 0}g · Sat. {values.saturatedFat ?? 0}g
       </p>
 
       {suggestion.ingredients && suggestion.ingredients.length > 0 && (

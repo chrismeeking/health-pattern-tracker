@@ -37,7 +37,7 @@ export function DailyNutritionSummary({ totals, profile }: DailyNutritionSummary
         unit=" kcal"
       />
 
-      <div className="grid grid-cols-4 gap-2 text-center text-sm pt-1">
+      <div className="grid grid-cols-5 gap-2 text-center text-sm pt-1">
         <div>
           <p className="text-slate-400 text-xs dark:text-slate-500">Protein</p>
           <p className="font-semibold text-slate-800 dark:text-slate-100">{Math.round(totals.protein)}g</p>
@@ -49,6 +49,10 @@ export function DailyNutritionSummary({ totals, profile }: DailyNutritionSummary
         <div>
           <p className="text-slate-400 text-xs dark:text-slate-500">Fat</p>
           <p className="font-semibold text-slate-800 dark:text-slate-100">{Math.round(totals.fat)}g</p>
+        </div>
+        <div>
+          <p className="text-slate-400 text-xs dark:text-slate-500">Sat. fat</p>
+          <p className="font-semibold text-slate-800 dark:text-slate-100">{Math.round(totals.saturatedFat)}g</p>
         </div>
         <div>
           <p className="text-slate-400 text-xs dark:text-slate-500">Fibre</p>

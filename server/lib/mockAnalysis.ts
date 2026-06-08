@@ -19,6 +19,7 @@ interface NutritionEstimate {
   protein: number;
   carbs: number;
   fat: number;
+  saturatedFat: number;
   fibre: number;
   sugar: number;
   salt: number;
@@ -33,6 +34,7 @@ function estimateNutrition(text: string): NutritionEstimate {
       protein: dbMatch.protein,
       carbs: dbMatch.carbs,
       fat: dbMatch.fat,
+      saturatedFat: dbMatch.saturatedFat,
       fibre: dbMatch.fibre,
       sugar: dbMatch.sugar,
       salt: dbMatch.salt,
@@ -119,6 +121,7 @@ export function mockAnalyseMeal(request: AnalyseMealRequest): AnalyseMealRespons
     protein: nutrition.protein,
     carbs: nutrition.carbs,
     fat: nutrition.fat,
+    saturatedFat: nutrition.saturatedFat,
     fibre: nutrition.fibre,
     sugar: nutrition.sugar,
     salt: nutrition.salt,

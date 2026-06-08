@@ -28,7 +28,7 @@ export function MealCard({ meal, onDelete, showDate }: MealCardProps) {
         <span className="text-sm font-semibold text-teal-600 shrink-0">{meal.calories} kcal</span>
       </div>
       <p className="text-xs text-slate-500">
-        P {meal.protein}g · C {meal.carbs}g · F {meal.fat}g · Fibre {meal.fibre}g
+        P {meal.protein}g · C {meal.carbs}g · F {meal.fat}g · Sat. {meal.saturatedFat ?? 0}g · Fibre {meal.fibre}g
       </p>
       {meal.triggerTags.length > 0 && (
         <div className="flex flex-wrap gap-1">

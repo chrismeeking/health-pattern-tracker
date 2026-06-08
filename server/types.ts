@@ -47,6 +47,7 @@ export interface AnalyseMealResponse {
   protein: number;
   carbs: number;
   fat: number;
+  saturatedFat: number;
   fibre: number;
   sugar: number;
   salt: number;

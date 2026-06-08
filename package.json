@@ -8,6 +8,7 @@
     "dev:web": "vite",
     "dev:api": "tsx watch server/index.ts",
     "build": "tsc -b && vite build && npm run build:api",
+    "build:meals": "node scripts/build-meal-database.mjs",
     "build:api": "tsc -p tsconfig.server.json",
     "preview": "vite preview",
     "start": "node dist-server/server/index.js",

@@ -3,6 +3,7 @@ import { ALL_TRIGGER_TAGS } from '@/types';
 import { getDatabaseSourceSummary, matchUkMeal, searchUkMeals, type UkMealDatabaseEntry } from '@/data/ukMealDatabase';
 import { fetchOpenFoodFactsBarcode } from './openFoodFacts';
 import { generateId } from '@/services/storage';
+import { deriveSaturatedFat } from '@/utils/nutrition';
 import { nowISO } from '@/utils/helpers';
 
 export type LookupStatus = 'saved' | 'open-food-facts' | 'mock-local' | 'offline';
@@ -19,6 +20,7 @@ export interface ScaledNutrition {
   protein: number;
   carbs: number;
   fat: number;
+  saturatedFat: number;
   fibre: number;
   sugar: number;
   salt: number;
@@ -36,6 +38,7 @@ const MOCK_CATALOG: Omit<FoodItem, 'id' | 'createdAt' | 'updatedAt' | 'profileId
     protein: 4,
     carbs: 26,
     fat: 13,
+    saturatedFat: 8,
     fibre: 1,
     sugar: 25,
     salt: 0.3,
@@ -51,6 +54,7 @@ const MOCK_CATALOG: Omit<FoodItem, 'id' | 'createdAt' | 'updatedAt' | 'profileId
     protein: 9,
     carbs: 28,
     fat: 1,
+    saturatedFat: 0,
     fibre: 8,
     sugar: 10,
     salt: 1.2,
@@ -66,6 +70,7 @@ const MOCK_CATALOG: Omit<FoodItem, 'id' | 'createdAt' | 'updatedAt' | 'profileId
     protein: 12,
     carbs: 8,
     fat: 6,
+    saturatedFat: 4,
     fibre: 0,
     sugar: 6,
     salt: 0.1,
@@ -81,6 +86,7 @@ const MOCK_CATALOG: Omit<FoodItem, 'id' | 'createdAt' | 'updatedAt' | 'profileId
     protein: 0,
     carbs: 35,
     fat: 0,
+    saturatedFat: 0,
     fibre: 0,
     sugar: 35,
     salt: 0,
@@ -135,6 +141,7 @@ export function lookupMealByName(name: string): FoodLookupResult {
       protein: match.protein,
       carbs: match.carbs,
       fat: match.fat,
+      saturatedFat: match.saturatedFat,
       fibre: match.fibre,
       sugar: match.sugar,
       salt: match.salt,
@@ -236,6 +243,7 @@ export function foodItemToMealFormValues(item: FoodItem, scaled?: ScaledNutritio
     protein: n.protein,
     carbs: n.carbs,
     fat: n.fat,
+    saturatedFat: n.saturatedFat,
     fibre: n.fibre,
     sugar: n.sugar,
     salt: n.salt,
@@ -256,6 +264,7 @@ export function scaleFoodNutrition(
       protein: item.protein,
       carbs: item.carbs,
       fat: item.fat,
+      saturatedFat: item.saturatedFat,
       fibre: item.fibre,
       sugar: item.sugar,
       salt: item.salt,
@@ -276,6 +285,7 @@ export function scaleFoodNutrition(
     protein: round(item.protein),
     carbs: round(item.carbs),
     fat: round(item.fat),
+    saturatedFat: round(item.saturatedFat),
     fibre: round(item.fibre),
     sugar: round(item.sugar),
     salt: round(item.salt),
@@ -292,6 +302,7 @@ export function createCustomFood(input: {
   protein: number;
   carbs: number;
   fat: number;
+  saturatedFat?: number;
   fibre: number;
   sugar: number;
   salt: number;
@@ -314,6 +325,7 @@ export function createCustomFood(input: {
     protein: input.protein,
     carbs: input.carbs,
     fat: input.fat,
+    saturatedFat: deriveSaturatedFat(input.fat, input.saturatedFat),
     fibre: input.fibre,
     sugar: input.sugar,
     salt: input.salt,

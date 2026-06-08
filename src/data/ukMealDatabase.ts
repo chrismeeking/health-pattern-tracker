@@ -1,26 +1,19 @@
 /**
  * UK meal nutrition database for offline mock lookup and name suggestions.
  *
- * Values are typical single-serving estimates from public sources (not user-specific).
- * Prefer official brand nutrition PDFs / websites where available; otherwise industry averages.
- *
- * Sources used:
- * - McDonald's UK nutrition booklet (Dec 2025)
- * - Greggs.com product pages
- * - Nando's UK menu / allergen PDFs
- * - Nutracheck chip-shop averages
- * - National Federation of Fish Friers (via press coverage)
- * - British Heart Foundation (typical full English ~850 kcal)
- * - NHS Healthier Families / NHS trust meal guides
- * - Tesco / Co-op ready-meal labels (supermarket portions)
+ * Curated entries: typical UK portions from public sources (brands, NHS, etc.).
+ * Generated entries: BBC Good Food per-serving nutrition (`npm run build:meals`).
  */
+
+import generatedMealsPayload from './meals/generated-meals.json' with { type: 'json' };
 
 export type MealConfidence = 'low' | 'medium' | 'high';
 
 export interface UkMealDatabaseEntry {
   id: string;
   name: string;
-  patterns: RegExp[];
+  patterns?: RegExp[];
+  aliases?: string[];
   servingDescription: string;
   sourceLabel: string;
   sourceUrl?: string;
@@ -29,6 +22,7 @@ export interface UkMealDatabaseEntry {
   protein: number;
   carbs: number;
   fat: number;
+  saturatedFat: number;
   fibre: number;
   sugar: number;
   salt: number;
@@ -36,7 +30,7 @@ export interface UkMealDatabaseEntry {
   triggerTags: string[];
 }
 
-export const UK_MEAL_DATABASE: UkMealDatabaseEntry[] = [
+const CURATED_UK_MEALS: UkMealDatabaseEntry[] = [
   {
     id: 'full-english',
     name: 'All Day Breakfast',
@@ -58,6 +52,7 @@ export const UK_MEAL_DATABASE: UkMealDatabaseEntry[] = [
     fibre: 6,
     sugar: 8,
     salt: 3.2,
+    saturatedFat: 22,
     ingredients: ['bacon', 'sausage', 'egg', 'baked beans', 'toast', 'tomato', 'mushrooms'],
     triggerTags: ['processedMeat', 'fatty', 'tomato', 'dairy'],
   },
@@ -76,6 +71,7 @@ export const UK_MEAL_DATABASE: UkMealDatabaseEntry[] = [
     fibre: 12,
     sugar: 10,
     salt: 1.2,
+    saturatedFat: 2,
     ingredients: ['baked beans', 'wholemeal bread', 'butter or spread'],
     triggerTags: ['tomato'],
   },
@@ -93,6 +89,7 @@ export const UK_MEAL_DATABASE: UkMealDatabaseEntry[] = [
     fibre: 14,
     sugar: 9,
     salt: 1.4,
+    saturatedFat: 2,
     ingredients: ['baked potato', 'baked beans', 'butter'],
     triggerTags: ['tomato', 'dairy'],
   },
@@ -110,6 +107,7 @@ export const UK_MEAL_DATABASE: UkMealDatabaseEntry[] = [
     fibre: 4,
     sugar: 8,
     salt: 2.5,
+    saturatedFat: 16,
     ingredients: ['pizza dough', 'tomato sauce', 'mozzarella', 'pepperoni', 'garlic', 'onion'],
     triggerTags: ['tomato', 'dairy', 'processedMeat', 'fatty', 'garlic', 'onion', 'spicy'],
   },
@@ -127,6 +125,7 @@ export const UK_MEAL_DATABASE: UkMealDatabaseEntry[] = [
     fibre: 4,
     sugar: 6,
     salt: 2.0,
+    saturatedFat: 12,
     ingredients: ['pizza dough', 'tomato sauce', 'mozzarella', 'basil'],
     triggerTags: ['tomato', 'dairy', 'gluten'],
   },
@@ -145,6 +144,7 @@ export const UK_MEAL_DATABASE: UkMealDatabaseEntry[] = [
     fibre: 5,
     sugar: 2,
     salt: 2.4,
+    saturatedFat: 8,
     ingredients: ['battered cod', 'chips', 'salt', 'vinegar'],
     triggerTags: ['fried', 'fatty', 'gluten'],
   },
@@ -162,6 +162,7 @@ export const UK_MEAL_DATABASE: UkMealDatabaseEntry[] = [
     fibre: 4,
     sugar: 2,
     salt: 2.1,
+    saturatedFat: 6,
     ingredients: ['fried chicken pieces', 'chips'],
     triggerTags: ['fried', 'fatty'],
   },
@@ -179,6 +180,7 @@ export const UK_MEAL_DATABASE: UkMealDatabaseEntry[] = [
     fibre: 5,
     sugar: 6,
     salt: 2.0,
+    saturatedFat: 18,
     ingredients: ['chicken or tofu', 'green curry paste', 'coconut milk', 'jasmine rice', 'garlic', 'chilli'],
     triggerTags: ['spicy', 'garlic', 'onion', 'coconutMilk', 'chilli'],
   },
@@ -200,6 +202,7 @@ export const UK_MEAL_DATABASE: UkMealDatabaseEntry[] = [
     fibre: 4,
     sugar: 9,
     salt: 2.2,
+    saturatedFat: 14,
     ingredients: ['chicken tikka', 'masala sauce', 'pilau rice', 'cream', 'tomato'],
     triggerTags: ['dairy', 'tomato', 'spicy', 'richFood'],
   },
@@ -218,6 +221,7 @@ export const UK_MEAL_DATABASE: UkMealDatabaseEntry[] = [
     fibre: 3,
     sugar: 11,
     salt: 1.6,
+    saturatedFat: 9,
     ingredients: ['chicken breast', 'masala sauce', 'pilau rice'],
     triggerTags: ['dairy', 'tomato', 'spicy'],
   },
@@ -235,6 +239,7 @@ export const UK_MEAL_DATABASE: UkMealDatabaseEntry[] = [
     fibre: 5,
     sugar: 8,
     salt: 2.5,
+    saturatedFat: 14,
     ingredients: ['meat or veg curry', 'pilau or boiled rice', 'onion', 'garlic', 'spices'],
     triggerTags: ['spicy', 'onion', 'garlic', 'richFood', 'takeaway'],
   },
@@ -252,6 +257,7 @@ export const UK_MEAL_DATABASE: UkMealDatabaseEntry[] = [
     fibre: 8,
     sugar: 5,
     salt: 1.8,
+    saturatedFat: 8,
     ingredients: ['roast meat', 'roast potatoes', 'vegetables', 'gravy', 'yorkshire pudding'],
     triggerTags: ['fatty', 'gluten'],
   },
@@ -269,6 +275,7 @@ export const UK_MEAL_DATABASE: UkMealDatabaseEntry[] = [
     fibre: 5,
     sugar: 6,
     salt: 1.5,
+    saturatedFat: 8,
     ingredients: ['minced lamb or beef', 'mashed potato', 'onion', 'carrot', 'gravy'],
     triggerTags: ['onion', 'fatty'],
   },
@@ -286,6 +293,7 @@ export const UK_MEAL_DATABASE: UkMealDatabaseEntry[] = [
     fibre: 6,
     sugar: 8,
     salt: 1.6,
+    saturatedFat: 6,
     ingredients: ['spaghetti', 'beef mince', 'tomato sauce', 'onion', 'garlic'],
     triggerTags: ['tomato', 'onion', 'garlic', 'gluten'],
   },
@@ -304,6 +312,7 @@ export const UK_MEAL_DATABASE: UkMealDatabaseEntry[] = [
     fibre: 4,
     sugar: 9,
     salt: 2.3,
+    saturatedFat: 10,
     ingredients: ['beef patties', 'bun', 'cheese', 'lettuce', 'onion', 'pickles', 'Big Mac sauce'],
     triggerTags: ['dairy', 'onion', 'processedMeat', 'takeaway'],
   },
@@ -321,6 +330,7 @@ export const UK_MEAL_DATABASE: UkMealDatabaseEntry[] = [
     fibre: 4,
     sugar: 0,
     salt: 0.6,
+    saturatedFat: 2,
     ingredients: ['potatoes', 'vegetable oil', 'salt'],
     triggerTags: ['fried', 'takeaway'],
   },
@@ -339,6 +349,7 @@ export const UK_MEAL_DATABASE: UkMealDatabaseEntry[] = [
     fibre: 1,
     sugar: 0,
     salt: 1.5,
+    saturatedFat: 12,
     ingredients: ['sausage meat', 'puff pastry'],
     triggerTags: ['processedMeat', 'fatty', 'gluten'],
   },
@@ -357,6 +368,7 @@ export const UK_MEAL_DATABASE: UkMealDatabaseEntry[] = [
     fibre: 1,
     sugar: 0,
     salt: 0.9,
+    saturatedFat: 4,
     ingredients: ['chicken', 'PERi-PERi marinade'],
     triggerTags: ['spicy'],
   },
@@ -374,6 +386,7 @@ export const UK_MEAL_DATABASE: UkMealDatabaseEntry[] = [
     fibre: 4,
     sugar: 1,
     salt: 2.0,
+    saturatedFat: 8,
     ingredients: ['half chicken', 'PERi-PERi chips'],
     triggerTags: ['spicy', 'fried', 'takeaway'],
   },
@@ -391,6 +404,7 @@ export const UK_MEAL_DATABASE: UkMealDatabaseEntry[] = [
     fibre: 3,
     sugar: 3,
     salt: 1.8,
+    saturatedFat: 7,
     ingredients: ['romaine lettuce', 'grilled chicken', 'parmesan', 'croutons', 'Caesar dressing'],
     triggerTags: ['dairy', 'gluten', 'fatty'],
   },
@@ -408,6 +422,7 @@ export const UK_MEAL_DATABASE: UkMealDatabaseEntry[] = [
     fibre: 4,
     sugar: 5,
     salt: 2.0,
+    saturatedFat: 8,
     ingredients: ['bread', 'ham', 'cheddar', 'butter', 'lettuce'],
     triggerTags: ['dairy', 'processedMeat', 'gluten'],
   },
@@ -425,6 +440,7 @@ export const UK_MEAL_DATABASE: UkMealDatabaseEntry[] = [
     fibre: 3,
     sugar: 4,
     salt: 1.6,
+    saturatedFat: 5,
     ingredients: ['tortilla wrap', 'chicken', 'lettuce', 'mayo or sauce'],
     triggerTags: ['fatty', 'takeaway'],
   },
@@ -442,6 +458,7 @@ export const UK_MEAL_DATABASE: UkMealDatabaseEntry[] = [
     fibre: 8,
     sugar: 5,
     salt: 2.2,
+    saturatedFat: 9,
     ingredients: ['tortilla', 'rice', 'beans', 'meat', 'cheese', 'salsa'],
     triggerTags: ['dairy', 'spicy', 'beansLegumes', 'takeaway', 'largePortion'],
   },
@@ -459,6 +476,7 @@ export const UK_MEAL_DATABASE: UkMealDatabaseEntry[] = [
     fibre: 7,
     sugar: 18,
     salt: 0.3,
+    saturatedFat: 3,
     ingredients: ['oats', 'milk', 'banana'],
     triggerTags: ['dairy'],
   },
@@ -476,9 +494,41 @@ export const UK_MEAL_DATABASE: UkMealDatabaseEntry[] = [
     fibre: 4,
     sugar: 4,
     salt: 1.8,
+    saturatedFat: 4,
     ingredients: ['vegetable or tomato soup', 'bread roll', 'butter'],
     triggerTags: ['tomato', 'gluten', 'dairy'],
   },
+];
+
+function normaliseSearch(text: string): string {
+  return text.trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+type GeneratedMealRecord = Omit<UkMealDatabaseEntry, 'patterns'> & {
+  aliases: string[];
+};
+
+function buildGeneratedMeals(): UkMealDatabaseEntry[] {
+  const curatedNames = new Set(
+    CURATED_UK_MEALS.map((entry) => normaliseSearch(entry.name))
+  );
+
+  return (generatedMealsPayload.meals as GeneratedMealRecord[])
+    .filter((meal) => !curatedNames.has(normaliseSearch(meal.name)))
+    .map((meal) => ({
+      ...meal,
+      aliases: meal.aliases ?? [],
+      saturatedFat:
+        meal.saturatedFat ?? Math.round((meal.fat || 0) * 0.4),
+    }));
+}
+
+const GENERATED_UK_MEALS = buildGeneratedMeals();
+
+/** Curated UK meals first, then BBC Good Food recipes (no name clashes with curated). */
+export const UK_MEAL_DATABASE: UkMealDatabaseEntry[] = [
+  ...CURATED_UK_MEALS,
+  ...GENERATED_UK_MEALS,
 ];
 
 const GENERIC_FALLBACK = {
@@ -487,34 +537,46 @@ const GENERIC_FALLBACK = {
   protein: 20,
   carbs: 50,
   fat: 18,
+  saturatedFat: 7,
   fibre: 4,
   sugar: 8,
   salt: 1.5,
 };
 
-function normaliseSearch(text: string): string {
-  return text.trim().toLowerCase().replace(/\s+/g, ' ');
-}
-
-function scoreUkMealMatch(entry: UkMealDatabaseEntry, normalized: string): number {
+function scoreMealEntry(entry: UkMealDatabaseEntry, normalized: string): number {
   const nameLower = normaliseSearch(entry.name);
   let score = 0;
+
+  if (entry.patterns?.some((pattern) => pattern.test(normalized))) {
+    score += 120;
+  }
+
   if (nameLower === normalized) score += 100;
-  if (nameLower.includes(normalized) || normalized.includes(nameLower)) score += 50;
-  if (entry.patterns.some((p) => p.test(normalized))) score += 80;
+  if (normalized.length >= 3 && nameLower.includes(normalized)) score += 80;
+  if (normalized.length >= 4 && normalized.includes(nameLower)) score += 60;
+
+  for (const alias of entry.aliases ?? []) {
+    const aliasLower = normaliseSearch(alias);
+    if (aliasLower === normalized) score += 90;
+    if (normalized.length >= 3 && aliasLower.includes(normalized)) score += 70;
+  }
+
   for (const word of normalized.split(' ')) {
     if (word.length >= 3 && nameLower.includes(word)) score += 10;
   }
+
   return score;
 }
+
 
 function getRankedUkMealMatches(text: string): { entry: UkMealDatabaseEntry; score: number }[] {
   const normalized = normaliseSearch(text);
   if (normalized.length < 2) return [];
 
-  const scored = UK_MEAL_DATABASE.map((entry) => {
-    return { entry, score: scoreUkMealMatch(entry, normalized) };
-  })
+  const scored = UK_MEAL_DATABASE.map((entry) => ({
+    entry,
+    score: scoreMealEntry(entry, normalized),
+  }))
     .filter(({ score }) => score > 0)
     .sort((a, b) => b.score - a.score);
 
@@ -539,6 +601,7 @@ export function getScaledGenericEstimate(text: string) {
     protein: Math.round(GENERIC_FALLBACK.protein * scale),
     carbs: Math.round(GENERIC_FALLBACK.carbs * scale),
     fat: Math.round(GENERIC_FALLBACK.fat * scale),
+    saturatedFat: Math.round(GENERIC_FALLBACK.saturatedFat * scale),
     fibre: GENERIC_FALLBACK.fibre,
     sugar: GENERIC_FALLBACK.sugar,
     salt: GENERIC_FALLBACK.salt,
@@ -560,5 +623,5 @@ export function inferDisplayName(text: string): string {
 }
 
 export function getDatabaseSourceSummary(): string {
-  return `${UK_MEAL_DATABASE.length} UK meals (official brand data where available)`;
+  return `${UK_MEAL_DATABASE.length} meals (${CURATED_UK_MEALS.length} curated UK + ${GENERATED_UK_MEALS.length} BBC Good Food recipes)`;
 }

@@ -21,10 +21,11 @@ export function MacroSummary({ totals, profile, compact }: MacroSummaryProps) {
     return (
       <Card className="space-y-2">
         <h3 className="text-sm font-medium text-slate-600">Macros today</h3>
-        <div className="grid grid-cols-4 gap-2 text-center text-sm">
+        <div className="grid grid-cols-5 gap-2 text-center text-sm">
           <div><span className="text-slate-400 block text-xs">Protein</span>{Math.round(totals.protein)}g</div>
           <div><span className="text-slate-400 block text-xs">Carbs</span>{Math.round(totals.carbs)}g</div>
           <div><span className="text-slate-400 block text-xs">Fat</span>{Math.round(totals.fat)}g</div>
+          <div><span className="text-slate-400 block text-xs">Sat. fat</span>{Math.round(totals.saturatedFat)}g</div>
           <div><span className="text-slate-400 block text-xs">Fibre</span>{Math.round(totals.fibre)}g</div>
         </div>
       </Card>

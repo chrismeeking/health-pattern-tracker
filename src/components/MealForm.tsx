@@ -18,6 +18,7 @@ export type MealFormValues = {
   protein: number;
   carbs: number;
   fat: number;
+  saturatedFat: number;
   fibre: number;
   sugar: number;
   salt: number;
@@ -50,6 +51,7 @@ const defaults: MealFormValues = {
   protein: 0,
   carbs: 0,
   fat: 0,
+  saturatedFat: 0,
   fibre: 0,
   sugar: 0,
   salt: 0,
@@ -67,6 +69,7 @@ export function mealToFormValues(meal: Meal): MealFormValues {
     protein: meal.protein,
     carbs: meal.carbs,
     fat: meal.fat,
+    saturatedFat: meal.saturatedFat ?? 0,
     fibre: meal.fibre,
     sugar: meal.sugar ?? 0,
     salt: meal.salt ?? 0,
@@ -240,6 +243,7 @@ export function MealForm({
             ['protein', 'Protein (g)'],
             ['carbs', 'Carbs (g)'],
             ['fat', 'Fat (g)'],
+            ['saturatedFat', 'Saturated fat (g)'],
             ['fibre', 'Fibre (g)'],
             ['sugar', 'Sugar (g)'],
             ['salt', 'Salt (g)'],

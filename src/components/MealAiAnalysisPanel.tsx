@@ -151,6 +151,7 @@ export function MealAiAnalysisPanel({ profileId, onApply }: MealAiAnalysisPanelP
       protein: result.protein,
       carbs: result.carbs,
       fat: result.fat,
+      saturatedFat: result.saturatedFat,
       fibre: result.fibre,
       sugar: result.sugar,
       salt: result.salt,
@@ -328,6 +329,7 @@ export function MealAiAnalysisPanel({ profileId, onApply }: MealAiAnalysisPanelP
                   <span>Protein: {result.protein}g</span>
                   <span>Carbs: {result.carbs}g</span>
                   <span>Fat: {result.fat}g</span>
+                  <span>Sat. fat: {result.saturatedFat}g</span>
                   <span>Fibre: {result.fibre}g</span>
                   <span>Sugar: {result.sugar}g</span>
                   <span>Salt: {result.salt}g</span>
