@@ -2,10 +2,12 @@
  * UK meal nutrition database for offline mock lookup and name suggestions.
  *
  * Curated entries: typical UK portions from public sources (brands, NHS, etc.).
+ * Staple entries: hand-curated UK basic foods (`curated-staples.json`, CoFID 2021 portions).
  * Home comfort entries: hand-curated UK home/pub meals (`curated-home-meals.json`).
  * Generated entries: BBC Good Food per-serving nutrition (`npm run build:meals`).
  */
 
+import staplesPayload from './meals/curated-staples.json' with { type: 'json' };
 import homeMealsPayload from './meals/curated-home-meals.json' with { type: 'json' };
 import generatedMealsPayload from './meals/generated-meals.json' with { type: 'json' };
 
@@ -521,11 +523,12 @@ function buildJsonMeals(
   }));
 }
 
+const CURATED_STAPLES = buildJsonMeals(staplesPayload);
 const CURATED_HOME_MEALS = buildJsonMeals(homeMealsPayload);
 
 function buildGeneratedMeals(): UkMealDatabaseEntry[] {
   const reservedNames = new Set(
-    [...CURATED_UK_MEALS, ...CURATED_HOME_MEALS].map((entry) =>
+    [...CURATED_UK_MEALS, ...CURATED_STAPLES, ...CURATED_HOME_MEALS].map((entry) =>
       normaliseSearch(entry.name)
     )
   );
@@ -541,9 +544,10 @@ function buildGeneratedMeals(): UkMealDatabaseEntry[] {
 
 const GENERATED_UK_MEALS = buildGeneratedMeals();
 
-/** Curated UK meals, home comfort meals, then BBC Good Food (deduped by name). */
+/** Curated UK meals, staples, home comfort meals, then BBC Good Food (deduped by name). */
 export const UK_MEAL_DATABASE: UkMealDatabaseEntry[] = [
   ...CURATED_UK_MEALS,
+  ...CURATED_STAPLES,
   ...CURATED_HOME_MEALS,
   ...GENERATED_UK_MEALS,
 ];
@@ -563,6 +567,10 @@ const GENERIC_FALLBACK = {
 function scoreMealEntry(entry: UkMealDatabaseEntry, normalized: string): number {
   const nameLower = normaliseSearch(entry.name);
   let score = 0;
+
+  if (normalized.length <= 20 && entry.id.startsWith('staple-')) {
+    score += 15;
+  }
 
   if (entry.patterns?.some((pattern) => pattern.test(normalized))) {
     score += 120;
@@ -640,5 +648,5 @@ export function inferDisplayName(text: string): string {
 }
 
 export function getDatabaseSourceSummary(): string {
-  return `${UK_MEAL_DATABASE.length} meals (${CURATED_UK_MEALS.length} curated UK + ${CURATED_HOME_MEALS.length} home comfort + ${GENERATED_UK_MEALS.length} BBC Good Food recipes)`;
+  return `${UK_MEAL_DATABASE.length} meals (${CURATED_UK_MEALS.length} curated UK + ${CURATED_STAPLES.length} staples + ${CURATED_HOME_MEALS.length} home comfort + ${GENERATED_UK_MEALS.length} BBC Good Food recipes)`;
 }
