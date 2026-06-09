@@ -174,7 +174,7 @@ export function MealForm({
             placeholder="What did you eat?"
             className={`${inputClass} flex-1 min-w-0`}
           />
-          {(!quickMode || showMoreOptions) && profileId && onSuggestApply && (
+          {profileId && onSuggestApply && (
             <>
               <AssistIconButton
                 label="Scan barcode"
@@ -194,7 +194,7 @@ export function MealForm({
             </>
           )}
         </div>
-        {(!quickMode || showMoreOptions) && profileId && onSuggestApply && (
+        {profileId && onSuggestApply && (
           <p className="text-[11px] text-slate-400 mt-1.5">
             Suggestions appear as you type · barcode or camera for packaged food and photos
           </p>
@@ -209,7 +209,7 @@ export function MealForm({
             onClose={() => setShowVisualAssist(false)}
           />
         )}
-        {(!quickMode || showMoreOptions) && databaseMatches.length > 0 && (
+        {databaseMatches.length > 0 && (
           <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
             {databaseMatches.map((suggestion) => (
               <button
@@ -228,7 +228,7 @@ export function MealForm({
             ))}
           </div>
         )}
-        {(!quickMode || showMoreOptions) && profileId && onSuggestApply && (
+        {profileId && onSuggestApply && (
           <MealNameSuggestionPanel
             profileId={profileId}
             mealName={form.mealName}
@@ -284,7 +284,7 @@ export function MealForm({
           onClick={() => setShowMoreOptions(true)}
           className="w-full text-sm text-teal-600 py-2 rounded-xl border border-dashed border-teal-200"
         >
-          More options (barcode, AI, triggers, full macros…)
+          More options (source, triggers, full macros…)
         </button>
       )}
 
