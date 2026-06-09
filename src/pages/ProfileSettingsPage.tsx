@@ -427,6 +427,7 @@ export function ProfileSettingsPage() {
                 onTargetWeightChange={(kg) =>
                   updateProfileField(activeProfile.id, 'targetWeight', kg)
                 }
+                goalType={activeProfile.goalType}
                 inputClass={inputClass}
               />
 

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import type { MeasurementSystem } from '@/types';
+import type { GoalType, MeasurementSystem } from '@/types';
+import { TargetWeightSuggestion } from './TargetWeightSuggestion';
 import {
   cmToFeetInches,
   feetInchesToCm,
@@ -18,6 +19,7 @@ interface BodyMetricsFieldsProps {
   onCurrentWeightChange: (kg: number | undefined) => void;
   onTargetWeightChange: (kg: number | undefined) => void;
   showTarget?: boolean;
+  goalType?: GoalType;
   inputClass: string;
 }
 
@@ -31,6 +33,7 @@ export function BodyMetricsFields({
   onCurrentWeightChange,
   onTargetWeightChange,
   showTarget = true,
+  goalType,
   inputClass,
 }: BodyMetricsFieldsProps) {
   const [heightCmInput, setHeightCmInput] = useState(heightCm?.toString() ?? '');
@@ -133,20 +136,34 @@ export function BodyMetricsFields({
             </div>
           </div>
           {showTarget && (
-            <div>
-              <label className="block text-xs text-slate-500 mb-1">Target weight (kg)</label>
-              <input
-                type="number"
-                step="0.1"
-                inputMode="decimal"
-                value={targetKgInput}
-                onChange={(e) => {
-                  setTargetKgInput(e.target.value);
-                  onTargetWeightChange(parseMetric(e.target.value));
-                }}
-                placeholder="e.g. 65"
-                className={inputClass}
-              />
+            <div className="space-y-2">
+              {goalType && (
+                <TargetWeightSuggestion
+                  heightCm={heightCm}
+                  currentWeightKg={currentWeightKg}
+                  targetWeightKg={targetWeightKg}
+                  goalType={goalType}
+                  system={system}
+                  onApply={onTargetWeightChange}
+                />
+              )}
+              <div>
+                <label className="block text-xs text-slate-500 mb-1">
+                  Target weight (kg){goalType ? ' — or enter your own' : ''}
+                </label>
+                <input
+                  type="number"
+                  step="0.1"
+                  inputMode="decimal"
+                  value={targetKgInput}
+                  onChange={(e) => {
+                    setTargetKgInput(e.target.value);
+                    onTargetWeightChange(parseMetric(e.target.value));
+                  }}
+                  placeholder="e.g. 65"
+                  className={inputClass}
+                />
+              </div>
             </div>
           )}
         </>
@@ -242,9 +259,22 @@ export function BodyMetricsFields({
             <p className="text-[10px] text-slate-400 mt-1">Or enter lb only in the lb field (e.g. 150 lb)</p>
           </div>
           {showTarget && (
-            <div>
-              <label className="block text-xs text-slate-500 mb-1">Target weight (st / lb)</label>
-              <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              {goalType && (
+                <TargetWeightSuggestion
+                  heightCm={heightCm}
+                  currentWeightKg={currentWeightKg}
+                  targetWeightKg={targetWeightKg}
+                  goalType={goalType}
+                  system={system}
+                  onApply={onTargetWeightChange}
+                />
+              )}
+              <div>
+                <label className="block text-xs text-slate-500 mb-1">
+                  Target weight (st / lb){goalType ? ' — or enter your own' : ''}
+                </label>
+                <div className="grid grid-cols-2 gap-3">
                 <input
                   type="number"
                   min={0}
@@ -284,6 +314,7 @@ export function BodyMetricsFields({
                   placeholder="lb"
                   className={inputClass}
                 />
+              </div>
               </div>
             </div>
           )}

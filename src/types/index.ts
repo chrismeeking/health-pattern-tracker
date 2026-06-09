@@ -385,7 +385,7 @@ export const AI_STATUS_LABEL =
 export const FOOD_LOOKUP_STATUS_LABEL =
   'Open Food Facts barcode lookup with saved-food cache; local UK meal database for meal names';
 
-export const APP_VERSION = '0.3.0';
+export const APP_VERSION = '0.3.1';
 
 export interface AppData {
   profiles: Profile[];

@@ -14,6 +14,15 @@ export function calculateBmi(weightKg: number, heightCm: number): number | null 
   return Math.round(bmi * 10) / 10;
 }
 
+/** Weight (kg) for a given BMI at height (cm). */
+export function weightKgFromBmi(bmi: number, heightCm: number): number | null {
+  if (!Number.isFinite(bmi) || !Number.isFinite(heightCm) || heightCm <= 0) return null;
+  const heightM = heightCm / 100;
+  const kg = bmi * heightM * heightM;
+  if (!Number.isFinite(kg) || kg <= 0) return null;
+  return Math.round(kg * 10) / 10;
+}
+
 export function getBmiCategory(bmi: number): BmiCategory {
   if (bmi < 18.5) {
     return {

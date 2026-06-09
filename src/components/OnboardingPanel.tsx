@@ -188,6 +188,7 @@ export function OnboardingPanel() {
               onHeightChange={setHeightCm}
               onCurrentWeightChange={setCurrentWeightKg}
               onTargetWeightChange={setTargetWeightKg}
+              goalType={goalType}
               inputClass={inputClass}
             />
             <div>
