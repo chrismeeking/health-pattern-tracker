@@ -21,6 +21,7 @@ import type { FoodItem } from '@/types';
 import type { MealFormValues } from '@/components/MealForm';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
+import { NumericInput } from '@/components/NumericInput';
 
 type ScanReturnTarget = 'meal' | 'saved';
 
@@ -302,12 +303,11 @@ export function ScanBarcodePage() {
               ))}
             </div>
             {servingMode !== 'default' && (
-              <input
-                type="number"
-                min={0.25}
-                step={servingMode === 'grams' ? 10 : 0.25}
+              <NumericInput
                 value={servingAmount}
-                onChange={(e) => setServingAmount(Number(e.target.value) || 1)}
+                onChange={setServingAmount}
+                min={0.25}
+                emptyValue={1}
                 className={`${inputClass} mt-2`}
                 placeholder={servingMode === 'grams' ? 'Grams' : 'Portions'}
               />

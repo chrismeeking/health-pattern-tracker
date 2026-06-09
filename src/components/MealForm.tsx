@@ -8,6 +8,7 @@ import { RiskCard } from './RiskCard';
 import { MealNameSuggestionPanel } from './MealNameSuggestion';
 import { MealVisualAnalysisAssist } from './MealVisualAnalysisAssist';
 import { AssistIconButton, BarcodeIcon, CameraIcon } from './MealInputAssistIcons';
+import { NumericInput } from './NumericInput';
 import {
   searchMealDatabaseSuggestions,
   type SuggestedMealValues,
@@ -257,12 +258,10 @@ export function MealForm({
 
       <div>
         <label className="text-xs font-medium text-slate-500 block mb-1.5">Calories</label>
-        <input
-          type="number"
-          inputMode="numeric"
-          min={0}
-          value={form.calories || ''}
-          onChange={(e) => update('calories', Number(e.target.value) || 0)}
+        <NumericInput
+          value={form.calories}
+          onChange={(n) => update('calories', n)}
+          allowDecimal={false}
           className={`${inputClass} text-2xl font-semibold text-center`}
           placeholder="0"
         />
@@ -271,12 +270,9 @@ export function MealForm({
       {quickMode && !showMoreOptions && (
         <div>
           <label className="text-xs font-medium text-slate-500 block mb-1.5">Protein (optional)</label>
-          <input
-            type="number"
-            inputMode="decimal"
-            min={0}
-            value={form.protein || ''}
-            onChange={(e) => update('protein', Number(e.target.value) || 0)}
+          <NumericInput
+            value={form.protein}
+            onChange={(n) => update('protein', n)}
             className={inputClass}
           />
         </div>
@@ -324,12 +320,9 @@ export function MealForm({
             ).map(([key, label]) => (
               <div key={key}>
                 <label className="text-xs font-medium text-slate-500 block mb-1.5">{label}</label>
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  min={0}
-                  value={form[key] || ''}
-                  onChange={(e) => update(key, Number(e.target.value) || 0)}
+                <NumericInput
+                  value={form[key]}
+                  onChange={(n) => update(key, n)}
                   className={inputClass}
                 />
               </div>
