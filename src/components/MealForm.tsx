@@ -113,6 +113,10 @@ export function MealForm({
   const [showVisualAssist, setShowVisualAssist] = useState(false);
   const [showMoreOptions, setShowMoreOptions] = useState(!quickMode);
   const [pendingChip, setPendingChip] = useState<MealNameSuggestion | null>(null);
+  const [dismissedChipKeys, setDismissedChipKeys] = useState<Set<string>>(new Set());
+
+  const chipKey = (suggestion: MealNameSuggestion) =>
+    `${suggestion.mealName}|${suggestion.servingDescription ?? ''}`;
 
   useEffect(() => {
     if (!appliedValues) return;
@@ -137,8 +141,19 @@ export function MealForm({
     onSubmit(form);
   };
 
-  const applySuggestionValues = (values: SuggestedMealValues) => {
+  useEffect(() => {
+    setDismissedChipKeys(new Set());
     setPendingChip(null);
+  }, [form.mealName]);
+
+  const applySuggestionValues = (
+    values: SuggestedMealValues,
+    fromChip?: MealNameSuggestion
+  ) => {
+    setPendingChip(null);
+    if (fromChip) {
+      setDismissedChipKeys((prev) => new Set(prev).add(chipKey(fromChip)));
+    }
     setForm((prev) => {
       const next = { ...prev, ...values };
       onValuesChange?.(next);
@@ -152,13 +167,14 @@ export function MealForm({
       setPendingChip(suggestion);
       return;
     }
-    applySuggestionValues(suggestion.values);
+    applySuggestionValues(suggestion.values, suggestion);
   };
 
   const databaseMatches =
     form.mealName.trim().length >= 2
       ? searchMealDatabaseSuggestions(form.mealName, 3).filter(
-          (suggestion) => suggestion.mealName !== form.mealName
+          (suggestion) =>
+            suggestion.mealName !== form.mealName && !dismissedChipKeys.has(chipKey(suggestion))
         )
       : [];
 
@@ -268,7 +284,7 @@ export function MealForm({
                 const notes = scaledServing
                   ? `Portion: ${scaledServing}. ${scaled.notes ?? pendingChip.values.notes ?? ''}`.trim()
                   : scaled.notes;
-                applySuggestionValues({ ...scaled, notes });
+                applySuggestionValues({ ...scaled, notes }, pendingChip);
               }}
             />
             <button

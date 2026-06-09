@@ -16,10 +16,7 @@ import { GoalCard } from '@/components/GoalCard';
 import { WeeklyProgressCard } from '@/components/WeeklyProgressCard';
 import { WeeklyNutritionCard } from '@/components/WeeklyNutritionCard';
 import { getWeeklyNutritionSummary } from '@/utils/weeklyNutrition';
-import {
-  exportGpSummaryText,
-  shareGpSummary,
-} from '@/services/export';
+import { shareGpSummary } from '@/services/export';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
@@ -149,22 +146,16 @@ export function HealthPage() {
           <p className="text-xs text-slate-400">
             Last 2 weeks of check-ins, episodes, and trigger estimates.
           </p>
-          <div className="grid gap-2">
-            <Button
-              variant="outline"
-              fullWidth
-              onClick={() => exportGpSummaryText(data, activeProfile.id)}
-            >
-              Download GP summary
-            </Button>
-            <Button
-              variant="secondary"
-              fullWidth
-              onClick={() => void shareGpSummary(data, activeProfile.id)}
-            >
-              Share with GP
-            </Button>
-          </div>
+          <Button
+            variant="secondary"
+            fullWidth
+            onClick={() => void shareGpSummary(data, activeProfile.id)}
+          >
+            Share GP summary
+          </Button>
+          <Link to="/profile" className="block text-center text-xs text-teal-600">
+            More exports in Settings
+          </Link>
         </section>
       )}
 

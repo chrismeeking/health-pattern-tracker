@@ -214,6 +214,8 @@ export function MealNameSuggestionPanel({
           const notes = scaledServing
             ? `Portion: ${scaledServing}. ${scaled.notes ?? ''}`.trim()
             : scaled.notes;
+          setDismissedFor(normalise(trimmed));
+          setSuggestion(null);
           onApply({ ...scaled, notes });
         }}
       />

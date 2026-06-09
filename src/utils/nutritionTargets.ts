@@ -246,3 +246,16 @@ export function suggestedTargetsToProfileFields(
     waterTarget: targets.waterTarget,
   };
 }
+
+/** True when profile daily targets match what we'd suggest for their current stats. */
+export function profileMatchesSuggestedTargets(profile: Profile): boolean {
+  const suggested = suggestedTargetsToProfileFields(getSuggestedNutritionTargets(profile));
+  return (
+    profile.dailyCalorieTarget === suggested.dailyCalorieTarget &&
+    profile.proteinTarget === suggested.proteinTarget &&
+    profile.carbTarget === suggested.carbTarget &&
+    profile.fatTarget === suggested.fatTarget &&
+    profile.fibreTarget === suggested.fibreTarget &&
+    profile.waterTarget === suggested.waterTarget
+  );
+}

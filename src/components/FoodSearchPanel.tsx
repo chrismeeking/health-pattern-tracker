@@ -20,9 +20,14 @@ export function FoodSearchPanel({ query, profileId, onApply }: FoodSearchPanelPr
   const [onlineHits, setOnlineHits] = useState<FoodSearchHit[]>([]);
   const [loading, setLoading] = useState(false);
   const [onlineError, setOnlineError] = useState<string | null>(null);
+  const [dismissedForQuery, setDismissedForQuery] = useState<string | null>(null);
   const requestId = useRef(0);
 
   const trimmed = query.trim();
+
+  useEffect(() => {
+    setDismissedForQuery(null);
+  }, [trimmed]);
 
   useEffect(() => {
     if (trimmed.length < 2) {
@@ -55,11 +60,13 @@ export function FoodSearchPanel({ query, profileId, onApply }: FoodSearchPanelPr
   }, [trimmed, profileId, data.savedFoods, data.favouriteMeals]);
 
   if (trimmed.length < 2) return null;
+  if (dismissedForQuery === trimmed.toLowerCase()) return null;
 
   const hits = [...localHits, ...onlineHits].slice(0, 8);
   if (!loading && hits.length === 0) return null;
 
   const applyHit = (hit: FoodSearchHit) => {
+    setDismissedForQuery(trimmed.toLowerCase());
     const form = foodSearchHitToFormValues(hit);
     onApply({
       mealName: form.mealName,

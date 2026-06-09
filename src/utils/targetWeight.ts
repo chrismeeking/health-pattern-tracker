@@ -199,3 +199,21 @@ export function getSuggestedTargetWeight(
   );
   return { primary, alternatives: [], disclaimer: DISCLAIMER };
 }
+
+const WEIGHT_MATCH_TOLERANCE_KG = 0.05;
+
+export function targetWeightMatchesSuggestion(
+  targetWeightKg: number | undefined,
+  heightCm: number,
+  currentWeightKg: number,
+  goalType: GoalType
+): TargetWeightOption | null {
+  if (targetWeightKg == null) return null;
+  const suggestion = getSuggestedTargetWeight(heightCm, currentWeightKg, goalType);
+  if (!suggestion) return null;
+
+  const all = [suggestion.primary, ...suggestion.alternatives];
+  return (
+    all.find((option) => Math.abs(option.kg - targetWeightKg) < WEIGHT_MATCH_TOLERANCE_KG) ?? null
+  );
+}

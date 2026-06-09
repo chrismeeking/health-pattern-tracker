@@ -4,19 +4,10 @@ import { useApp } from '@/hooks/useAppData';
 import { generateId, getProfileData } from '@/services/storage';
 import {
   getSuggestedNutritionTargets,
+  profileMatchesSuggestedTargets,
   suggestedTargetsToProfileFields,
 } from '@/utils/nutritionTargets';
-import {
-  exportAllDataJson,
-  exportDailyCheckInsCsv,
-  exportGpSummaryCsv,
-  exportGpSummaryText,
-  exportMealsCsv,
-  exportProfileDataJson,
-  exportSymptomEpisodesCsv,
-  exportWeightEntriesCsv,
-  shareGpSummary,
-} from '@/services/export';
+import { DataExportSection } from '@/components/DataExportSection';
 import {
   loadReminderSettings,
   requestNotificationPermission,
@@ -309,6 +300,8 @@ export function ProfileSettingsPage() {
   const suggestedTargets = activeProfile
     ? getSuggestedNutritionTargets(activeProfile)
     : null;
+  const targetsAlreadyApplied =
+    activeProfile != null && profileMatchesSuggestedTargets(activeProfile);
   const profileWeightSummary = activeProfile
     ? getWeightSummary(getProfileData(data, activeProfile.id).weightEntries, activeProfile)
     : null;
@@ -535,40 +528,56 @@ export function ProfileSettingsPage() {
           description="Daily targets for this profile. Goal type sets sensible defaults; you can still edit them manually."
         >
           <Card className="space-y-4">
-            {suggestedTargets && (
-              <div className="rounded-xl bg-slate-50 border border-slate-100 px-3 py-2.5 space-y-2">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-xs font-medium text-slate-700">
-                      Suggested for {GOAL_TYPE_LABELS[activeProfile.goalType]}
-                    </p>
-                    <p className="text-[11px] text-slate-500 mt-0.5">
-                      {suggestedTargets.dailyCalorieTarget} kcal · P{' '}
-                      {suggestedTargets.proteinTarget}g · C {suggestedTargets.carbTarget}g · F{' '}
-                      {suggestedTargets.fatTarget}g · Fibre {suggestedTargets.fibreTarget}g
-                    </p>
-                  </div>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => applySuggestedTargets(activeProfile)}
-                    className="shrink-0"
-                  >
-                    Apply
-                  </Button>
-                </div>
-                <p className="text-[10px] text-slate-400">
-                  {suggestedTargets.calorieBasis} {suggestedTargets.macroBasis}
+            {suggestedTargets && targetsAlreadyApplied ? (
+              <div className="rounded-xl border border-teal-200 bg-teal-50/60 px-3 py-2.5 dark:border-teal-800 dark:bg-teal-950/40">
+                <p className="text-xs font-medium text-teal-900 dark:text-teal-100">
+                  Using suggested targets for {GOAL_TYPE_LABELS[activeProfile.goalType]}
                 </p>
-                {suggestedTargets.guidanceNotes.length > 0 && (
-                  <ul className="text-[10px] text-slate-400 space-y-0.5 list-disc pl-4">
-                    {suggestedTargets.guidanceNotes.map((note) => (
-                      <li key={note}>{note}</li>
-                    ))}
-                  </ul>
-                )}
+                <p className="text-[11px] text-teal-800/80 mt-0.5 dark:text-teal-200/80">
+                  {suggestedTargets.dailyCalorieTarget} kcal · P {suggestedTargets.proteinTarget}g
+                  · C {suggestedTargets.carbTarget}g · F {suggestedTargets.fatTarget}g · Fibre{' '}
+                  {suggestedTargets.fibreTarget}g
+                </p>
+                <p className="text-[10px] text-teal-700/70 mt-1 dark:text-teal-300/70">
+                  Change goal type, weight, or height above, then tap Apply to refresh.
+                </p>
               </div>
+            ) : (
+              suggestedTargets && (
+                <div className="rounded-xl bg-slate-50 border border-slate-100 px-3 py-2.5 space-y-2 dark:bg-slate-900/50 dark:border-slate-800">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-medium text-slate-700 dark:text-slate-200">
+                        Suggested for {GOAL_TYPE_LABELS[activeProfile.goalType]}
+                      </p>
+                      <p className="text-[11px] text-slate-500 mt-0.5 dark:text-slate-400">
+                        {suggestedTargets.dailyCalorieTarget} kcal · P{' '}
+                        {suggestedTargets.proteinTarget}g · C {suggestedTargets.carbTarget}g · F{' '}
+                        {suggestedTargets.fatTarget}g · Fibre {suggestedTargets.fibreTarget}g
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => applySuggestedTargets(activeProfile)}
+                      className="shrink-0"
+                    >
+                      Apply
+                    </Button>
+                  </div>
+                  <p className="text-[10px] text-slate-400 dark:text-slate-500">
+                    {suggestedTargets.calorieBasis} {suggestedTargets.macroBasis}
+                  </p>
+                  {suggestedTargets.guidanceNotes.length > 0 && (
+                    <ul className="text-[10px] text-slate-400 space-y-0.5 list-disc pl-4 dark:text-slate-500">
+                      {suggestedTargets.guidanceNotes.map((note) => (
+                        <li key={note}>{note}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )
             )}
 
             <div className="grid grid-cols-2 gap-3">
@@ -756,92 +765,9 @@ export function ProfileSettingsPage() {
 
       <SettingsSection
         title="Data export"
-        description="Export the selected profile first, or export all profiles for a full household backup. CSV files open in Excel."
+        description="Back up your data or share a GP summary. Spreadsheet exports are under More."
       >
-        <div className="grid gap-3">
-          {activeProfile && (
-            <Card className="space-y-2">
-              <p className="text-xs font-medium text-slate-600">
-                {activeProfile.name} only
-              </p>
-              <Button
-                variant="outline"
-                fullWidth
-                onClick={() => exportProfileDataJson(data, activeProfile.id)}
-              >
-                Export {activeProfile.name} as JSON
-              </Button>
-              <Button
-                variant="outline"
-                fullWidth
-                onClick={() => exportMealsCsv(data, activeProfile.id)}
-              >
-                Export {activeProfile.name} meals CSV
-              </Button>
-              <Button
-                variant="outline"
-                fullWidth
-                onClick={() => exportSymptomEpisodesCsv(data, activeProfile.id)}
-              >
-                Export {activeProfile.name} symptoms CSV
-              </Button>
-              <Button
-                variant="outline"
-                fullWidth
-                onClick={() => exportDailyCheckInsCsv(data, activeProfile.id)}
-              >
-                Export {activeProfile.name} check-ins CSV
-              </Button>
-              <Button
-                variant="outline"
-                fullWidth
-                onClick={() => exportWeightEntriesCsv(data, activeProfile.id)}
-              >
-                Export {activeProfile.name} weights CSV
-              </Button>
-              <Button
-                variant="outline"
-                fullWidth
-                onClick={() => exportGpSummaryText(data, activeProfile.id)}
-              >
-                GP summary (last 2 weeks, text)
-              </Button>
-              <Button
-                variant="outline"
-                fullWidth
-                onClick={() => exportGpSummaryCsv(data, activeProfile.id)}
-              >
-                GP summary CSV
-              </Button>
-              <Button
-                variant="secondary"
-                fullWidth
-                onClick={() => void shareGpSummary(data, activeProfile.id)}
-              >
-                Share GP summary
-              </Button>
-            </Card>
-          )}
-
-          <Card className="space-y-2">
-            <p className="text-xs font-medium text-slate-600">All profiles / household</p>
-            <Button variant="outline" fullWidth onClick={() => exportAllDataJson(data)}>
-              Export all data as JSON
-            </Button>
-            <Button variant="outline" fullWidth onClick={() => exportMealsCsv(data)}>
-              Export all meals CSV
-            </Button>
-            <Button variant="outline" fullWidth onClick={() => exportSymptomEpisodesCsv(data)}>
-              Export all symptom episodes CSV
-            </Button>
-            <Button variant="outline" fullWidth onClick={() => exportDailyCheckInsCsv(data)}>
-              Export all daily check-ins CSV
-            </Button>
-            <Button variant="outline" fullWidth onClick={() => exportWeightEntriesCsv(data)}>
-              Export all weight entries CSV
-            </Button>
-          </Card>
-        </div>
+        <DataExportSection data={data} activeProfile={activeProfile ?? undefined} />
       </SettingsSection>
       </CollapsibleSection>
 
