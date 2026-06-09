@@ -3,6 +3,8 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp } from '@/hooks/useAppData';
 import { findById, generateId, removeById, updateById } from '@/services/storage';
 import { todayISO } from '@/utils/helpers';
+import { WeightInputField } from '@/components/BodyMetricsFields';
+import { getProfileMeasurementSystem } from '@/utils/measurements';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
@@ -19,30 +21,30 @@ export function AddWeightPage() {
   );
 
   const [date, setDate] = useState(existing?.date ?? todayISO());
-  const [weight, setWeight] = useState(existing?.weight?.toString() ?? '');
+  const [weightKg, setWeightKg] = useState<number | undefined>(existing?.weight);
   const [notes, setNotes] = useState(existing?.notes ?? '');
   const [showDelete, setShowDelete] = useState(false);
 
   if (!activeProfile) return null;
 
+  const units = getProfileMeasurementSystem(activeProfile);
   const inputClass =
     'w-full px-3 py-3 rounded-xl border border-slate-200 text-base focus:outline-none focus:ring-2 focus:ring-teal-500/30';
 
   const save = () => {
-    const parsed = parseFloat(weight);
-    if (Number.isNaN(parsed) || parsed <= 0) return;
+    if (weightKg == null || weightKg <= 0) return;
 
     if (existing) {
       update((d) => ({
         ...d,
         weightEntries: updateById(d.weightEntries, existing.id, {
           date,
-          weight: parsed,
+          weight: weightKg,
           notes: notes.trim() || undefined,
         }),
         profiles: d.profiles.map((p) =>
           p.id === activeProfile.id && date === todayISO()
-            ? { ...p, currentWeight: parsed }
+            ? { ...p, currentWeight: weightKg }
             : p
         ),
       }));
@@ -55,13 +57,13 @@ export function AddWeightPage() {
             id: generateId(),
             profileId: activeProfile.id,
             date,
-            weight: parsed,
+            weight: weightKg,
             notes: notes.trim() || undefined,
           },
         ],
         profiles: d.profiles.map((p) =>
           p.id === activeProfile.id && date === todayISO()
-            ? { ...p, currentWeight: parsed }
+            ? { ...p, currentWeight: weightKg }
             : p
         ),
       }));
@@ -95,18 +97,12 @@ export function AddWeightPage() {
           />
         </div>
 
-        <div>
-          <label className="block text-sm text-slate-600 mb-1">Weight (kg)</label>
-          <input
-            type="number"
-            step="0.1"
-            min="0"
-            value={weight}
-            onChange={(e) => setWeight(e.target.value)}
-            className={inputClass}
-            placeholder="e.g. 72.5"
-          />
-        </div>
+        <WeightInputField
+          system={units}
+          kgValue={weightKg}
+          onKgChange={setWeightKg}
+          inputClass={inputClass}
+        />
 
         <div>
           <label className="block text-sm text-slate-600 mb-1">Notes (optional)</label>

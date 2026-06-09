@@ -14,9 +14,11 @@ import {
   GOAL_TYPE_LABELS,
   type ActivityLevel,
   type GoalType,
+  type MeasurementSystem,
   type Profile,
   type ProfileModule,
 } from '@/types';
+import { BodyMetricsFields } from './BodyMetricsFields';
 import { ModulePresetPicker } from './ModulePresetPicker';
 import { Button } from './Button';
 import { Card } from './Card';
@@ -43,9 +45,10 @@ export function OnboardingPanel() {
   const [name, setName] = useState('');
   const [goalType, setGoalType] = useState<GoalType>('generalHealth');
   const [activityLevel, setActivityLevel] = useState<ActivityLevel>('moderate');
-  const [currentWeight, setCurrentWeight] = useState('');
-  const [targetWeight, setTargetWeight] = useState('');
-  const [height, setHeight] = useState('');
+  const [currentWeightKg, setCurrentWeightKg] = useState<number | undefined>();
+  const [targetWeightKg, setTargetWeightKg] = useState<number | undefined>();
+  const [heightCm, setHeightCm] = useState<number | undefined>();
+  const [measurementSystem, setMeasurementSystem] = useState<MeasurementSystem>('metric');
   const [age, setAge] = useState('');
   const [modules, setModules] = useState<ProfileModule[]>(DEFAULT_MODULES);
 
@@ -65,12 +68,13 @@ export function OnboardingPanel() {
       activityLevel,
       goalType,
       enabledModules: normalizeEnabledModules(modules),
-      currentWeight: currentWeight ? Number(currentWeight) : undefined,
-      targetWeight: targetWeight ? Number(targetWeight) : undefined,
-      height: height ? Number(height) : undefined,
+      currentWeight: currentWeightKg,
+      targetWeight: targetWeightKg,
+      height: heightCm,
+      measurementSystem,
       age: age ? Number(age) : undefined,
     }),
-    [activityLevel, age, currentWeight, goalType, height, modules, name, targetWeight]
+    [activityLevel, age, currentWeightKg, goalType, heightCm, measurementSystem, modules, name, targetWeightKg]
   );
 
   const suggestedTargets = getSuggestedNutritionTargets(previewProfile);
@@ -170,40 +174,30 @@ export function OnboardingPanel() {
         )}
 
         {showWeightFields && (
-          <div className="grid grid-cols-2 gap-3">
-            <input
-              type="number"
-              inputMode="decimal"
-              value={currentWeight}
-              onChange={(event) => setCurrentWeight(event.target.value)}
-              placeholder="Current kg (optional)"
-              className={inputClass}
+          <>
+            <BodyMetricsFields
+              system={measurementSystem}
+              onSystemChange={setMeasurementSystem}
+              heightCm={heightCm}
+              currentWeightKg={currentWeightKg}
+              targetWeightKg={targetWeightKg}
+              onHeightChange={setHeightCm}
+              onCurrentWeightChange={setCurrentWeightKg}
+              onTargetWeightChange={setTargetWeightKg}
+              inputClass={inputClass}
             />
-            <input
-              type="number"
-              inputMode="decimal"
-              value={targetWeight}
-              onChange={(event) => setTargetWeight(event.target.value)}
-              placeholder="Target kg (optional)"
-              className={inputClass}
-            />
-            <input
-              type="number"
-              inputMode="numeric"
-              value={height}
-              onChange={(event) => setHeight(event.target.value)}
-              placeholder="Height cm (optional)"
-              className={inputClass}
-            />
-            <input
-              type="number"
-              inputMode="numeric"
-              value={age}
-              onChange={(event) => setAge(event.target.value)}
-              placeholder="Age (optional)"
-              className={inputClass}
-            />
-          </div>
+            <div>
+              <label className="block text-xs text-slate-500 mb-1 dark:text-slate-400">Age (optional)</label>
+              <input
+                type="number"
+                inputMode="numeric"
+                value={age}
+                onChange={(event) => setAge(event.target.value)}
+                placeholder="Age"
+                className={inputClass}
+              />
+            </div>
+          </>
         )}
 
         {showNutritionTargets && (

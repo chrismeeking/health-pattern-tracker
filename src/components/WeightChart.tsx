@@ -1,5 +1,6 @@
-import type { WeightEntry } from '@/types';
+import type { MeasurementSystem, WeightEntry } from '@/types';
 import { calculateBmi, getBmiCategory } from '@/utils/bmi';
+import { formatWeight, formatWeightChange } from '@/utils/measurements';
 import { Card } from './Card';
 
 interface WeightChartProps {
@@ -9,6 +10,7 @@ interface WeightChartProps {
   latestWeight: number | null;
   targetWeight?: number;
   heightCm?: number;
+  measurementSystem?: MeasurementSystem;
 }
 
 export function WeightChart({
@@ -18,6 +20,7 @@ export function WeightChart({
   latestWeight,
   targetWeight,
   heightCm,
+  measurementSystem = 'metric',
 }: WeightChartProps) {
   const bmi =
     latestWeight != null && heightCm != null
@@ -40,10 +43,12 @@ export function WeightChart({
         <div>
           <p className="text-xs text-slate-400 uppercase tracking-wide">Current weight</p>
           <p className="text-3xl font-semibold text-slate-800">
-            {latestWeight != null ? `${latestWeight} kg` : '—'}
+            {formatWeight(latestWeight, measurementSystem)}
           </p>
           {targetWeight != null && (
-            <p className="text-sm text-slate-500">Target: {targetWeight} kg</p>
+            <p className="text-sm text-slate-500">
+              Target: {formatWeight(targetWeight, measurementSystem)}
+            </p>
           )}
           {bmi != null && bmiCategory && (
             <>
@@ -61,8 +66,7 @@ export function WeightChart({
             <p>
               This week:{' '}
               <span className={weekChange <= 0 ? 'text-teal-600' : 'text-slate-700'}>
-                {weekChange > 0 ? '+' : ''}
-                {weekChange} kg
+                {formatWeightChange(weekChange, measurementSystem)}
               </span>
             </p>
           )}
@@ -70,8 +74,7 @@ export function WeightChart({
             <p>
               This month:{' '}
               <span className={monthChange <= 0 ? 'text-teal-600' : 'text-slate-700'}>
-                {monthChange > 0 ? '+' : ''}
-                {monthChange} kg
+                {formatWeightChange(monthChange, measurementSystem)}
               </span>
             </p>
           )}

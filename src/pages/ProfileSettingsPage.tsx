@@ -41,6 +41,8 @@ import { ModulePresetPicker } from '@/components/ModulePresetPicker';
 import { hasModule, normalizeEnabledModules } from '@/utils/profileModules';
 import { getWeightSummary } from '@/utils/health';
 import { calculateBmi, getBmiCategory } from '@/utils/bmi';
+import { BodyMetricsFields } from '@/components/BodyMetricsFields';
+import type { MeasurementSystem } from '@/types';
 
 const GOAL_TYPES = Object.keys(GOAL_TYPE_LABELS) as GoalType[];
 const ACTIVITY_LEVELS: ActivityLevel[] = ['sedentary', 'light', 'moderate', 'active'];
@@ -401,39 +403,23 @@ export function ProfileSettingsPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs text-slate-500 mb-1">Height (cm)</label>
-                  <input
-                    type="number"
-                    value={activeProfile.height ?? ''}
-                    onChange={(e) =>
-                      updateProfileField(
-                        activeProfile.id,
-                        'height',
-                        e.target.value === '' ? undefined : Number(e.target.value)
-                      )
-                    }
-                    className={inputClass}
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-slate-500 mb-1">Current weight (kg)</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={activeProfile.currentWeight ?? ''}
-                    onChange={(e) =>
-                      updateProfileField(
-                        activeProfile.id,
-                        'currentWeight',
-                        e.target.value === '' ? undefined : Number(e.target.value)
-                      )
-                    }
-                    className={inputClass}
-                  />
-                </div>
-              </div>
+              <BodyMetricsFields
+                system={activeProfile.measurementSystem ?? 'metric'}
+                onSystemChange={(system: MeasurementSystem) =>
+                  updateProfileField(activeProfile.id, 'measurementSystem', system)
+                }
+                heightCm={activeProfile.height}
+                currentWeightKg={activeProfile.currentWeight}
+                targetWeightKg={activeProfile.targetWeight}
+                onHeightChange={(cm) => updateProfileField(activeProfile.id, 'height', cm)}
+                onCurrentWeightChange={(kg) =>
+                  updateProfileField(activeProfile.id, 'currentWeight', kg)
+                }
+                onTargetWeightChange={(kg) =>
+                  updateProfileField(activeProfile.id, 'targetWeight', kg)
+                }
+                inputClass={inputClass}
+              />
 
               {profileBmi != null && profileBmiCategory && (
                 <div className="rounded-xl bg-slate-50 border border-slate-100 px-3 py-2.5 dark:bg-slate-900 dark:border-slate-800">
@@ -449,22 +435,6 @@ export function ProfileSettingsPage() {
               )}
 
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs text-slate-500 mb-1">Target weight (kg)</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={activeProfile.targetWeight ?? ''}
-                    onChange={(e) =>
-                      updateProfileField(
-                        activeProfile.id,
-                        'targetWeight',
-                        e.target.value === '' ? undefined : Number(e.target.value)
-                      )
-                    }
-                    className={inputClass}
-                  />
-                </div>
                 <div>
                   <label className="block text-xs text-slate-500 mb-1">Activity level</label>
                   <select

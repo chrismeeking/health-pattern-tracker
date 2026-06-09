@@ -23,6 +23,7 @@ import {
 } from '@/utils/health';
 import { calculateBmi, getBmiCategory } from '@/utils/bmi';
 import { getTodayExerciseBurn } from '@/utils/exercise';
+import { formatWeight, formatWeightChange, getProfileMeasurementSystem } from '@/utils/measurements';
 import {
   hasHealthTracking,
   hasModule,
@@ -73,6 +74,7 @@ export function HomePage() {
   const showGoals = hasModule(activeProfile, 'goals');
   const showHealth = hasHealthTracking(activeProfile);
   const macroFocused = isMacroFocusedProfile(activeProfile);
+  const units = getProfileMeasurementSystem(activeProfile);
   const nutritionPrimary = isNutritionPrimaryHome(activeProfile);
   const digestivePrimary = isDigestivePrimaryHome(activeProfile);
 
@@ -174,14 +176,14 @@ export function HomePage() {
             <Link to="/health">
               <StatCard
                 label="Current weight"
-                value={weightSummary.latest != null ? `${weightSummary.latest} kg` : 'Log'}
+                value={weightSummary.latest != null ? formatWeight(weightSummary.latest, units) : 'Log'}
                 subtext={
                   bmi != null && bmiCategory
                     ? `BMI ${bmi} · ${bmiCategory.label}`
                     : weightSummary.weekChange != null
-                      ? `${weightSummary.weekChange > 0 ? '+' : ''}${weightSummary.weekChange} kg this week`
+                      ? `${formatWeightChange(weightSummary.weekChange, units)} this week`
                       : activeProfile.targetWeight
-                        ? `Target ${activeProfile.targetWeight} kg`
+                        ? `Target ${formatWeight(activeProfile.targetWeight, units)}`
                         : 'Log weight to track trend'
                 }
               />
@@ -315,14 +317,14 @@ export function HomePage() {
               <Link to="/health">
                 <StatCard
                   label="Current weight"
-                  value={weightSummary.latest != null ? `${weightSummary.latest} kg` : 'Log'}
+                  value={weightSummary.latest != null ? formatWeight(weightSummary.latest, units) : 'Log'}
                   subtext={
                     bmi != null && bmiCategory
                       ? `BMI ${bmi} · ${bmiCategory.label}`
                       : weightSummary.weekChange != null
-                        ? `${weightSummary.weekChange > 0 ? '+' : ''}${weightSummary.weekChange} kg this week`
+                        ? `${formatWeightChange(weightSummary.weekChange, units)} this week`
                         : activeProfile.targetWeight
-                          ? `Target ${activeProfile.targetWeight} kg`
+                          ? `Target ${formatWeight(activeProfile.targetWeight, units)}`
                           : 'Log weight to track trend'
                   }
                 />
@@ -350,6 +352,7 @@ export function HomePage() {
                 progress={weeklyProgress}
                 showSymptoms={showHealth}
                 compact
+                measurementSystem={units}
               />
             </Link>
           )}

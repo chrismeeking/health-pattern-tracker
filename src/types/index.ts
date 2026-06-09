@@ -1,5 +1,7 @@
 export type ActivityLevel = 'sedentary' | 'light' | 'moderate' | 'active';
 
+export type MeasurementSystem = 'metric' | 'imperial';
+
 export type GoalType =
   | 'maintain'
   | 'slowWeightLoss'
@@ -50,6 +52,8 @@ export interface Profile {
   height?: number;
   currentWeight?: number;
   targetWeight?: number;
+  /** Display and entry units; stored values remain kg and cm. */
+  measurementSystem?: MeasurementSystem;
   activityLevel: ActivityLevel;
   goalType: GoalType;
   enabledModules: ProfileModule[];
@@ -381,7 +385,7 @@ export const AI_STATUS_LABEL =
 export const FOOD_LOOKUP_STATUS_LABEL =
   'Open Food Facts barcode lookup with saved-food cache; local UK meal database for meal names';
 
-export const APP_VERSION = '0.2.0';
+export const APP_VERSION = '0.2.1';
 
 export interface AppData {
   profiles: Profile[];

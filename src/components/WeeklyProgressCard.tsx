@@ -1,16 +1,20 @@
+import type { MeasurementSystem } from '@/types';
 import type { WeeklyProgress } from '@/utils/health';
+import { formatWeightChange } from '@/utils/measurements';
 import { Card } from './Card';
 
 interface WeeklyProgressCardProps {
   progress: WeeklyProgress;
   showSymptoms?: boolean;
   compact?: boolean;
+  measurementSystem?: MeasurementSystem;
 }
 
 export function WeeklyProgressCard({
   progress,
   showSymptoms = true,
   compact,
+  measurementSystem = 'metric',
 }: WeeklyProgressCardProps) {
   const items = [
     { label: 'Avg calories/day', value: progress.avgCalories ? `${progress.avgCalories} kcal` : '—' },
@@ -23,7 +27,7 @@ export function WeeklyProgressCard({
       label: 'Weight change',
       value:
         progress.weightChange != null
-          ? `${progress.weightChange > 0 ? '+' : ''}${progress.weightChange} kg`
+          ? formatWeightChange(progress.weightChange, measurementSystem)
           : '—',
     },
   ];

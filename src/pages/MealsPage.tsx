@@ -5,6 +5,7 @@ import { getProfileData, removeById, generateId } from '@/services/storage';
 import { getMealsForDate, getTodayNutrition } from '@/utils/nutrition';
 import { getTodayExerciseBurn, getExerciseEntriesForDate, EXERCISE_LABELS } from '@/utils/exercise';
 import { hasModule } from '@/utils/profileModules';
+import { formatWeight, formatWeightChange, getProfileMeasurementSystem } from '@/utils/measurements';
 import { getWeightSummary } from '@/utils/health';
 import { todayISO, nowISO, formatTime } from '@/utils/helpers';
 import { DailyNutritionSummary } from '@/components/DailyNutritionSummary';
@@ -34,6 +35,7 @@ export function MealsPage() {
   const todayTotals = getTodayNutrition(profileData.meals);
   const todayExercise = getTodayExerciseBurn(profileData.exerciseEntries);
   const showExercise = hasModule(activeProfile, 'exercise');
+  const units = getProfileMeasurementSystem(activeProfile);
   const showWater = hasModule(activeProfile, 'water');
   const showWeight = hasModule(activeProfile, 'weight');
   const todayWater = profileData.waterEntries
@@ -98,10 +100,10 @@ export function MealsPage() {
         <Link to="/health">
           <StatCard
             label="Current weight"
-            value={weightSummary.latest != null ? `${weightSummary.latest} kg` : 'Log'}
+            value={weightSummary.latest != null ? formatWeight(weightSummary.latest, units) : 'Log'}
             subtext={
               weightSummary.weekChange != null
-                ? `${weightSummary.weekChange > 0 ? '+' : ''}${weightSummary.weekChange} kg this week`
+                ? `${formatWeightChange(weightSummary.weekChange, units)} this week`
                 : 'Tap for health hub'
             }
           />

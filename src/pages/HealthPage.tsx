@@ -10,6 +10,7 @@ import {
   isDigestiveProfile,
 } from '@/utils/health';
 import { hasModule, showInsightsNav } from '@/utils/profileModules';
+import { formatWeight, getProfileMeasurementSystem } from '@/utils/measurements';
 import { WeightChart } from '@/components/WeightChart';
 import { GoalCard } from '@/components/GoalCard';
 import { WeeklyProgressCard } from '@/components/WeeklyProgressCard';
@@ -35,6 +36,7 @@ export function HealthPage() {
   const weeklyProgress = getWeeklyProgress(data, activeProfile.id);
   const showSymptoms = isDigestiveProfile(activeProfile);
   const showWeightModule = hasModule(activeProfile, 'weight');
+  const units = getProfileMeasurementSystem(activeProfile);
 
   const activeGoals = goals.filter((g) => g.status === 'active');
   const completedGoals = goals
@@ -122,9 +124,14 @@ export function HealthPage() {
         latestWeight={weightSummary.latest}
         targetWeight={weightSummary.target ?? undefined}
         heightCm={showWeightModule ? activeProfile.height : undefined}
+        measurementSystem={units}
       />
 
-      <WeeklyProgressCard progress={weeklyProgress} showSymptoms={showSymptoms} />
+      <WeeklyProgressCard
+        progress={weeklyProgress}
+        showSymptoms={showSymptoms}
+        measurementSystem={units}
+      />
 
       <section className="space-y-3">
         <div className="flex justify-between items-center">
@@ -191,7 +198,9 @@ export function HealthPage() {
             .map((entry) => (
               <Card key={entry.id} className="flex justify-between items-center text-sm">
                 <div>
-                  <p className="font-medium text-slate-800">{entry.weight} kg</p>
+                  <p className="font-medium text-slate-800">
+                    {formatWeight(entry.weight, units)}
+                  </p>
                   <p className="text-xs text-slate-400">
                     {new Date(entry.date).toLocaleDateString('en-GB', {
                       weekday: 'short',
