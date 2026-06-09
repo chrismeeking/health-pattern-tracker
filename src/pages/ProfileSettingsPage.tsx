@@ -9,11 +9,19 @@ import {
 import {
   exportAllDataJson,
   exportDailyCheckInsCsv,
+  exportGpSummaryCsv,
+  exportGpSummaryText,
   exportMealsCsv,
   exportProfileDataJson,
   exportSymptomEpisodesCsv,
   exportWeightEntriesCsv,
+  shareGpSummary,
 } from '@/services/export';
+import {
+  loadReminderSettings,
+  requestNotificationPermission,
+  saveReminderSettings,
+} from '@/services/reminders';
 import { SettingsSection } from '@/components/SettingsSection';
 import { SyncStatusBadge } from '@/components/SyncStatusBadge';
 import { AppUpdateCard } from '@/components/AppUpdateCard';
@@ -114,6 +122,7 @@ export function ProfileSettingsPage() {
   const [syncLoading, setSyncLoading] = useState(false);
   const [pullLoading, setPullLoading] = useState(false);
   const [cloudHasData, setCloudHasData] = useState(false);
+  const [reminderSettings, setReminderSettings] = useState(() => loadReminderSettings());
 
   useEffect(() => {
     if (!isSignedIn) {
@@ -789,6 +798,27 @@ export function ProfileSettingsPage() {
               >
                 Export {activeProfile.name} weights CSV
               </Button>
+              <Button
+                variant="outline"
+                fullWidth
+                onClick={() => exportGpSummaryText(data, activeProfile.id)}
+              >
+                GP summary (last 2 weeks, text)
+              </Button>
+              <Button
+                variant="outline"
+                fullWidth
+                onClick={() => exportGpSummaryCsv(data, activeProfile.id)}
+              >
+                GP summary CSV
+              </Button>
+              <Button
+                variant="secondary"
+                fullWidth
+                onClick={() => void shareGpSummary(data, activeProfile.id)}
+              >
+                Share GP summary
+              </Button>
             </Card>
           )}
 
@@ -812,6 +842,36 @@ export function ProfileSettingsPage() {
           </Card>
         </div>
       </SettingsSection>
+      </CollapsibleSection>
+
+      <CollapsibleSection
+        title="Reminders"
+        description="Optional gentle check-in nudges."
+        defaultOpen={false}
+      >
+        <Card className="space-y-3">
+          <label className="flex items-center justify-between gap-3 text-sm text-slate-600">
+            <span>Daily check-in reminder (after 8pm if not checked in)</span>
+            <input
+              type="checkbox"
+              checked={reminderSettings.checkInReminderEnabled}
+              onChange={async (e) => {
+                const enabled = e.target.checked;
+                if (enabled) {
+                  const permission = await requestNotificationPermission();
+                  if (permission !== 'granted') return;
+                }
+                const next = { ...reminderSettings, checkInReminderEnabled: enabled };
+                setReminderSettings(next);
+                saveReminderSettings(next);
+              }}
+              className="h-5 w-5 rounded border-slate-300"
+            />
+          </label>
+          <p className="text-xs text-slate-400">
+            One gentle notification per day at most. Requires browser permission. Turn off anytime.
+          </p>
+        </Card>
       </CollapsibleSection>
 
       <CollapsibleSection

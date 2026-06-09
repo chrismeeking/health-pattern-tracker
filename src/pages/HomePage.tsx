@@ -2,14 +2,16 @@ import { Link } from 'react-router-dom';
 import { useApp } from '@/hooks/useAppData';
 import { generateId, getProfileData } from '@/services/storage';
 import {
+  getNetCalorieTarget,
   getTodayNutrition,
   getTodayWater,
   isMacroFocusedProfile,
 } from '@/utils/nutrition';
 import {
+  getCheckInHomeStat,
   getDaysSinceSevereEpisode,
-  getLastCheckInStatus,
   getRecentSymptoms,
+  getTodayCheckIn,
 } from '@/utils/symptoms';
 import {
   getSuspectedTriggers,
@@ -50,6 +52,13 @@ import { OnboardingPanel } from '@/components/OnboardingPanel';
 import { Icon } from '@/components/Icon';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
+import { HomeCheckInActions } from '@/components/HomeCheckInSection';
+import { SetupGuideCard } from '@/components/SetupGuideCard';
+import { WeeklyNutritionCard } from '@/components/WeeklyNutritionCard';
+import { getProfileSetupStatus } from '@/utils/profileSetup';
+import { getCheckInStreak } from '@/utils/checkInStreak';
+import { getWeeklyNutritionSummary } from '@/utils/weeklyNutrition';
+import { repeatMealFormValues } from '@/utils/recentMeals';
 
 export function HomePage() {
   const { data, activeProfile, update } = useApp();
@@ -75,20 +84,30 @@ export function HomePage() {
   const showHealth = hasHealthTracking(activeProfile);
   const macroFocused = isMacroFocusedProfile(activeProfile);
   const units = getProfileMeasurementSystem(activeProfile);
-  const nutritionPrimary = isNutritionPrimaryHome(activeProfile);
-  const digestivePrimary = isDigestivePrimaryHome(activeProfile);
-
-  const daysSinceSevere = getDaysSinceSevereEpisode(profileData.symptomEpisodes);
-  const lastCheckIn = getLastCheckInStatus(profileData.dailyCheckIns);
-  const recentSymptoms = getRecentSymptoms(profileData.symptomEpisodes, 3);
-  const activeIssues = profileData.issues.filter((i) => i.active).slice(0, 2);
+  const setup = getProfileSetupStatus(data, activeProfile);
+  const nutritionPrimary =
+    setup.homeFocus === 'nutrition' ||
+    (isNutritionPrimaryHome(activeProfile) && setup.tier !== 'starter');
+  const digestivePrimary =
+    setup.homeFocus === 'digestive' ||
+    (isDigestivePrimaryHome(activeProfile) && setup.tier !== 'starter');
+  const checkInStreak = showHealth ? getCheckInStreak(profileData.dailyCheckIns) : 0;
+  const weeklyNutrition = getWeeklyNutritionSummary(data, activeProfile);
 
   const issueName = (issueId?: string) =>
     profileData.issues.find((i) => i.id === issueId)?.name;
+  const resolveIssueName = (issueId: string) => issueName(issueId);
 
-  const suspectedTriggers = showHealth
-    ? getSuspectedTriggers(data, activeProfile.id).slice(0, 3)
-    : [];
+  const daysSinceSevere = getDaysSinceSevereEpisode(profileData.symptomEpisodes);
+  const todayCheckIn = getTodayCheckIn(profileData.dailyCheckIns);
+  const checkInStat = getCheckInHomeStat(profileData.dailyCheckIns, resolveIssueName);
+  const recentSymptoms = getRecentSymptoms(profileData.symptomEpisodes, 3);
+  const activeIssues = profileData.issues.filter((i) => i.active).slice(0, 2);
+
+  const suspectedTriggers =
+    showHealth && setup.showPatterns
+      ? getSuspectedTriggers(data, activeProfile.id).slice(0, 3)
+      : [];
   const toleratedFoods = showHealth
     ? getToleratedFoods(data, activeProfile.id).slice(0, 3)
     : [];
@@ -112,6 +131,38 @@ export function HomePage() {
     showWeight ||
     showGoals ||
     (weeklyProgress.daysWithMeals > 0 && (showNutrition || showMacros));
+
+  const quickLogMeal = (meal: (typeof recentMeals)[0]) => {
+    const values = repeatMealFormValues(meal);
+    const now = nowISO();
+    update((d) => ({
+      ...d,
+      meals: [
+        ...d.meals,
+        {
+          id: generateId(),
+          profileId: activeProfile.id,
+          dateTime: now,
+          mealType: values.mealType,
+          mealName: values.mealName.trim(),
+          source: values.source,
+          calories: values.calories,
+          protein: values.protein,
+          carbs: values.carbs,
+          fat: values.fat,
+          saturatedFat: values.saturatedFat || undefined,
+          fibre: values.fibre,
+          sugar: values.sugar || undefined,
+          salt: values.salt || undefined,
+          portionSize: values.portionSize,
+          notes: values.notes.trim() || undefined,
+          triggerTags: values.triggerTags,
+          createdAt: now,
+          updatedAt: now,
+        },
+      ],
+    }));
+  };
 
   const addWater = (amount: number) => {
     update((d) => ({
@@ -151,7 +202,17 @@ export function HomePage() {
 
       <InstallAppPrompt />
 
-      {topProgressInsight && !digestivePrimary && (
+      <SetupGuideCard setup={setup} profileName={activeProfile.name} />
+
+      {showHealth && checkInStreak >= 2 && (
+        <StatCard
+          label="Check-in streak"
+          value={`${checkInStreak} days`}
+          subtext="Checked in on consecutive days — keep it up"
+        />
+      )}
+
+      {topProgressInsight && !digestivePrimary && setup.showInsights && (
         <section className="space-y-2">
           <div className="flex justify-between items-center">
             <h2 className="text-sm font-medium text-slate-600 dark:text-slate-300">This week</h2>
@@ -161,7 +222,7 @@ export function HomePage() {
         </section>
       )}
 
-      {nutritionPrimary && (
+      {nutritionPrimary && setup.showNutritionDashboard && (
         <>
           {showNutrition && (
             <DailyNutritionSummary
@@ -170,6 +231,14 @@ export function HomePage() {
               exerciseBurned={todayExercise}
               showExercise={showExercise}
             />
+          )}
+
+          {showMacros && (
+            <MacroSummary totals={todayTotals} profile={activeProfile} />
+          )}
+
+          {showNutrition && setup.tier !== 'starter' && (
+            <WeeklyNutritionCard summary={weeklyNutrition} compact />
           )}
 
           {showWeight && (
@@ -205,11 +274,15 @@ export function HomePage() {
             )}
           </div>
 
-          <QuickNavLinks profile={activeProfile} compact />
+          <QuickNavLinks
+            profile={activeProfile}
+            compact
+            checkInDoneToday={Boolean(todayCheckIn)}
+          />
         </>
       )}
 
-      {digestivePrimary && showHealth && (
+      {digestivePrimary && showHealth && setup.showHealthDashboard && (
         <section className="space-y-3">
           <div className="flex justify-between items-center">
             <h2 className="text-sm font-medium text-slate-600 dark:text-slate-300">Today</h2>
@@ -222,21 +295,18 @@ export function HomePage() {
               value={daysSinceSevere ?? '—'}
               subtext={daysSinceSevere != null ? 'Keep tracking progress' : 'No severe episodes logged'}
             />
-            <StatCard label="Check-in status" value={lastCheckIn} />
+            <StatCard
+              label="Check-in status"
+              value={checkInStat.value}
+              subtext={checkInStat.subtext}
+            />
           </div>
 
-          <div className="flex gap-2">
-            <Link to="/add/check-in" className="flex-1">
-              <Button fullWidth size="sm">
-                Daily check-in
-              </Button>
-            </Link>
-            <Link to="/add/symptom" className="flex-1">
-              <Button variant="outline" fullWidth size="sm">
-                Log symptom
-              </Button>
-            </Link>
-          </div>
+          <HomeCheckInActions
+            todayCheckIn={todayCheckIn}
+            issueName={resolveIssueName}
+            prominent
+          />
 
           {activeIssues.length > 0 && (
             <div className="space-y-2">
@@ -296,12 +366,19 @@ export function HomePage() {
             </Link>
           </div>
 
-          <QuickNavLinks profile={activeProfile} compact />
+          <QuickNavLinks
+            profile={activeProfile}
+            compact
+            checkInDoneToday={Boolean(todayCheckIn)}
+          />
         </section>
       )}
 
       {!nutritionPrimary && !digestivePrimary && (
-        <QuickNavLinks profile={activeProfile} />
+        <QuickNavLinks
+          profile={activeProfile}
+          checkInDoneToday={Boolean(todayCheckIn)}
+        />
       )}
 
       {showHealthProgress && !digestivePrimary && (
@@ -359,7 +436,7 @@ export function HomePage() {
         </section>
       )}
 
-      {showHealth && !digestivePrimary && (
+      {showHealth && !digestivePrimary && setup.showHealthDashboard && (
         <section className="space-y-3">
           <h2 className="text-sm font-medium text-slate-600 dark:text-slate-300">Health snapshot</h2>
           <div className="grid grid-cols-2 gap-3">
@@ -368,21 +445,14 @@ export function HomePage() {
               value={daysSinceSevere ?? '—'}
               subtext={daysSinceSevere != null ? 'Keep tracking progress' : 'No severe episodes logged'}
             />
-            <StatCard label="Check-in status" value={lastCheckIn} />
+            <StatCard
+              label="Check-in status"
+              value={checkInStat.value}
+              subtext={checkInStat.subtext}
+            />
           </div>
 
-          <div className="flex gap-2">
-            <Link to="/add/check-in" className="flex-1">
-              <Button variant="secondary" fullWidth size="sm">
-                Daily check-in
-              </Button>
-            </Link>
-            <Link to="/add/symptom" className="flex-1">
-              <Button variant="outline" fullWidth size="sm">
-                Log symptom
-              </Button>
-            </Link>
-          </div>
+          <HomeCheckInActions todayCheckIn={todayCheckIn} issueName={resolveIssueName} />
 
           {activeIssues.length > 0 && (
             <div className="space-y-2">
@@ -473,12 +543,20 @@ export function HomePage() {
         />
       )}
 
-      {showMacros && !nutritionPrimary &&
+      {showMacros && !nutritionPrimary && setup.showNutritionDashboard &&
         (macroFocused ? (
           <MacroSummary totals={todayTotals} profile={activeProfile} />
         ) : (
           <MacroSummary totals={todayTotals} profile={activeProfile} compact />
         ))}
+
+      {showExercise && todayExercise > 0 && !nutritionPrimary && (
+        <StatCard
+          label="Exercise today"
+          value={`+${todayExercise} kcal`}
+          subtext={`Net budget ${getNetCalorieTarget(activeProfile.dailyCalorieTarget ?? 2000, todayExercise)} kcal`}
+        />
+      )}
 
       {showWater && (
         <WaterTracker
@@ -514,7 +592,12 @@ export function HomePage() {
             </Link>
           </div>
           {recentMeals.map((meal) => (
-            <MealCard key={meal.id} meal={meal} showDate />
+            <MealCard
+              key={meal.id}
+              meal={meal}
+              showDate
+              onQuickLog={() => quickLogMeal(meal)}
+            />
           ))}
         </section>
       )}

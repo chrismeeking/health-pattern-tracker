@@ -6,6 +6,7 @@ import { EntityActions } from './EntityActions';
 interface FavouriteMealCardProps {
   favourite: FavouriteMeal;
   onUse?: () => void;
+  onQuickAdd?: () => void;
   onDelete?: () => void;
   pickMode?: boolean;
 }
@@ -13,6 +14,7 @@ interface FavouriteMealCardProps {
 export function FavouriteMealCard({
   favourite,
   onUse,
+  onQuickAdd,
   onDelete,
   pickMode,
 }: FavouriteMealCardProps) {
@@ -42,6 +44,9 @@ export function FavouriteMealCard({
         <EntityActions
           editTo={`/favourites/${favourite.id}/edit`}
           onDelete={onDelete}
+          extraAction={
+            onQuickAdd ? { label: 'Log now', onClick: onQuickAdd } : undefined
+          }
         />
       )}
     </Card>

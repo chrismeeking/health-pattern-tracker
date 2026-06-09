@@ -15,6 +15,12 @@ import { TRIGGER_TAG_LABELS } from '@/types';
 
 export const SYMPTOM_WINDOW_HOURS = 12;
 
+/** Minimum logged meals before showing suspected trigger lists. */
+export const MIN_MEALS_FOR_TRIGGER_INSIGHTS = 5;
+
+/** Minimum symptom episodes before showing suspected trigger lists. */
+export const MIN_EPISODES_FOR_TRIGGER_INSIGHTS = 3;
+
 export function getConfidence(count: number): ConfidenceLevel {
   if (count >= 15) return 'high';
   if (count >= 5) return 'medium';
@@ -94,8 +100,15 @@ export function getTriggerReports(data: AppData, profileId: string): TriggerRepo
 }
 
 export function getSuspectedTriggers(data: AppData, profileId: string): SuspectedTrigger[] {
+  const { meals, episodes } = profileData(data, profileId);
+  if (
+    meals.length < MIN_MEALS_FOR_TRIGGER_INSIGHTS ||
+    episodes.length < MIN_EPISODES_FOR_TRIGGER_INSIGHTS
+  ) {
+    return [];
+  }
+
   const reports = getTriggerReports(data, profileId);
-  const { episodes } = profileData(data, profileId);
 
   return reports
     .filter((r) => r.symptomsAfter > 0 && r.timesEaten >= 1)

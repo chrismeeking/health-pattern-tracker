@@ -26,7 +26,7 @@ import { Card } from './Card';
 const GOAL_TYPES = Object.keys(GOAL_TYPE_LABELS) as GoalType[];
 const ACTIVITY_LEVELS: ActivityLevel[] = ['sedentary', 'light', 'moderate', 'active'];
 
-const DEFAULT_MODULES: ProfileModule[] = ['nutrition', 'macros', 'weight', 'water', 'exercise', 'goals'];
+const DEFAULT_MODULES: ProfileModule[] = ['nutrition'];
 
 function presetShowsWeightFields(modules: ProfileModule[]): boolean {
   const preset = detectPreset(modules);
@@ -138,6 +138,10 @@ export function OnboardingPanel() {
           />
         </div>
 
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          Start with a preset — <strong>Digestive tracking</strong> for Chris-style symptom patterns, or{' '}
+          <strong>Nutrition &amp; fitness</strong> for Jenny-style macros and weight goals.
+        </p>
         <ModulePresetPicker modules={modules} onChange={handleModulesChange} />
 
         {showNutritionTargets && (

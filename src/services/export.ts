@@ -1,5 +1,7 @@
 import type { AppData } from '@/types';
-import { APP_VERSION } from '@/types';
+import { APP_VERSION, TRIGGER_TAG_LABELS } from '@/types';
+import { getSuspectedTriggers } from './insightEngine';
+import { summarizeDailyCheckIn } from '@/utils/symptoms';
 
 function escapeCsv(value: unknown): string {
   if (value == null) return '';
@@ -219,6 +221,149 @@ export function exportDailyCheckInsCsv(data: AppData, profileId?: string): void 
     `daily-check-ins${profileFilenameSuffix(data, profileId)}-${dateStamp()}.csv`,
     'text/csv;charset=utf-8'
   );
+}
+
+function rowsInLastDays<T extends { dateTime?: string; date?: string; startDateTime?: string }>(
+  rows: T[],
+  days: number
+): T[] {
+  const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+  return rows.filter((row) => {
+    const raw = row.dateTime ?? row.date ?? row.startDateTime ?? '';
+    return new Date(raw).getTime() >= cutoff;
+  });
+}
+
+/** Shareable text summary for GP visits — last 14 days. */
+export function buildGpSummaryText(data: AppData, profileId: string): string {
+  const profile = data.profiles.find((p) => p.id === profileId);
+  const name = profile?.name ?? 'Patient';
+  const issueName = (id: string) => data.issues.find((i) => i.id === id)?.name ?? id;
+
+  const checkIns = rowsInLastDays(
+    data.dailyCheckIns.filter((c) => c.profileId === profileId),
+    14
+  ).sort((a, b) => b.date.localeCompare(a.date));
+
+  const episodes = rowsInLastDays(
+    data.symptomEpisodes.filter((s) => s.profileId === profileId),
+    14
+  ).sort(
+    (a, b) => new Date(b.startDateTime).getTime() - new Date(a.startDateTime).getTime()
+  );
+
+  const triggers = getSuspectedTriggers(data, profileId).slice(0, 5);
+
+  const lines: string[] = [
+    `Health Pattern Tracker — summary for GP`,
+    `Profile: ${name}`,
+    `Generated: ${new Date().toLocaleString('en-GB')}`,
+    `Period: last 14 days`,
+    '',
+    '--- Daily check-ins ---',
+  ];
+
+  if (checkIns.length === 0) {
+    lines.push('No check-ins in this period.');
+  } else {
+    for (const c of checkIns) {
+      lines.push(`${c.date}: ${summarizeDailyCheckIn(c, issueName)}`);
+      if (c.notes) lines.push(`  Notes: ${c.notes}`);
+    }
+  }
+
+  lines.push('', '--- Symptom episodes ---');
+  if (episodes.length === 0) {
+    lines.push('No symptom episodes in this period.');
+  } else {
+    for (const ep of episodes) {
+      const issue = ep.issueId ? issueName(ep.issueId) : 'General';
+      lines.push(
+        `${ep.startDateTime.split('T')[0]} ${issue}: ${ep.severity}, pain ${ep.painScore ?? '—'}/10 — ${ep.symptoms.join(', ') || 'symptoms logged'}`
+      );
+      if (ep.suspectedTrigger) lines.push(`  Suspected trigger: ${ep.suspectedTrigger}`);
+      if (ep.notes) lines.push(`  Notes: ${ep.notes}`);
+    }
+  }
+
+  lines.push('', '--- Possible food triggers (pattern estimate, not diagnosis) ---');
+  if (triggers.length === 0) {
+    lines.push('Insufficient data or no triggers flagged.');
+  } else {
+    for (const t of triggers) {
+      lines.push(
+        `${TRIGGER_TAG_LABELS[t.trigger]}: symptoms after ${Math.round(t.symptomRate * 100)}% of tagged meals (${t.episodeCount} episodes, ${t.confidence} confidence)`
+      );
+    }
+  }
+
+  lines.push('', 'This summary is for personal tracking only and is not a medical diagnosis.');
+  return lines.join('\n');
+}
+
+export function exportGpSummaryText(data: AppData, profileId: string): void {
+  const content = buildGpSummaryText(data, profileId);
+  downloadText(
+    content,
+    `gp-summary${profileFilenameSuffix(data, profileId)}-${dateStamp()}.txt`,
+    'text/plain;charset=utf-8'
+  );
+}
+
+export function exportGpSummaryCsv(data: AppData, profileId: string): void {
+  const checkIns = rowsInLastDays(
+    data.dailyCheckIns.filter((c) => c.profileId === profileId),
+    14
+  );
+  const episodes = rowsInLastDays(
+    data.symptomEpisodes.filter((s) => s.profileId === profileId),
+    14
+  );
+  const triggers = getSuspectedTriggers(data, profileId);
+
+  const sections = [
+    'Section,Date,Detail',
+    ...checkIns.map((c) =>
+      toCsvRow(['Check-in', c.date, summarizeDailyCheckIn(c, (id) => data.issues.find((i) => i.id === id)?.name)])
+    ),
+    ...episodes.map((ep) =>
+      toCsvRow([
+        'Symptom',
+        ep.startDateTime.split('T')[0],
+        `${ep.severity}; pain ${ep.painScore ?? '—'}; ${ep.symptoms.join('; ')}`,
+      ])
+    ),
+    ...triggers.map((t) =>
+      toCsvRow([
+        'Trigger estimate',
+        dateStamp(),
+        `${TRIGGER_TAG_LABELS[t.trigger]}; ${Math.round(t.symptomRate * 100)}% symptom rate`,
+      ])
+    ),
+  ];
+
+  downloadText(
+    sections.join('\r\n'),
+    `gp-summary${profileFilenameSuffix(data, profileId)}-${dateStamp()}.csv`,
+    'text/csv;charset=utf-8'
+  );
+}
+
+export async function shareGpSummary(data: AppData, profileId: string): Promise<boolean> {
+  const text = buildGpSummaryText(data, profileId);
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        title: 'Health summary for GP',
+        text,
+      });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  exportGpSummaryText(data, profileId);
+  return true;
 }
 
 export function exportWeightEntriesCsv(data: AppData, profileId?: string): void {

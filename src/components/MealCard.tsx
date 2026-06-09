@@ -7,10 +7,11 @@ import { EntityActions } from './EntityActions';
 interface MealCardProps {
   meal: Meal;
   onDelete?: () => void;
+  onQuickLog?: () => void;
   showDate?: boolean;
 }
 
-export function MealCard({ meal, onDelete, showDate }: MealCardProps) {
+export function MealCard({ meal, onDelete, onQuickLog, showDate }: MealCardProps) {
   const timeLabel = isToday(meal.dateTime)
     ? formatTime(meal.dateTime)
     : `${formatDate(meal.dateTime)} · ${formatTime(meal.dateTime)}`;
@@ -46,7 +47,15 @@ export function MealCard({ meal, onDelete, showDate }: MealCardProps) {
         </div>
       )}
       {meal.notes && <p className="text-xs text-slate-400 italic">{meal.notes}</p>}
-      <EntityActions editTo={`/meals/${meal.id}/edit`} onDelete={onDelete} />
+      <EntityActions
+        editTo={`/meals/${meal.id}/edit`}
+        onDelete={onDelete}
+        extraAction={
+          onQuickLog
+            ? { label: 'Log again', onClick: onQuickLog }
+            : undefined
+        }
+      />
     </Card>
   );
 }

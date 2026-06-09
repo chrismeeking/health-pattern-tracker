@@ -11,8 +11,11 @@ import { AssistIconButton, BarcodeIcon, CameraIcon } from './MealInputAssistIcon
 import { NumericInput } from './NumericInput';
 import {
   searchMealDatabaseSuggestions,
+  type MealNameSuggestion,
   type SuggestedMealValues,
 } from '@/services/ai/mealNameSuggestion';
+import { FoodSearchPanel } from './FoodSearchPanel';
+import { PortionScalePicker } from './PortionScalePicker';
 
 export type MealFormValues = {
   mealName: string;
@@ -109,6 +112,7 @@ export function MealForm({
   const [form, setForm] = useState<MealFormValues>({ ...defaults, ...initial });
   const [showVisualAssist, setShowVisualAssist] = useState(false);
   const [showMoreOptions, setShowMoreOptions] = useState(!quickMode);
+  const [pendingChip, setPendingChip] = useState<MealNameSuggestion | null>(null);
 
   useEffect(() => {
     if (!appliedValues) return;
@@ -134,12 +138,21 @@ export function MealForm({
   };
 
   const applySuggestionValues = (values: SuggestedMealValues) => {
+    setPendingChip(null);
     setForm((prev) => {
       const next = { ...prev, ...values };
       onValuesChange?.(next);
       return next;
     });
     onSuggestApply?.(values);
+  };
+
+  const applyChipSuggestion = (suggestion: MealNameSuggestion) => {
+    if (suggestion.servingDescription) {
+      setPendingChip(suggestion);
+      return;
+    }
+    applySuggestionValues(suggestion.values);
   };
 
   const databaseMatches =
@@ -209,23 +222,62 @@ export function MealForm({
             onClose={() => setShowVisualAssist(false)}
           />
         )}
+        {profileId && onSuggestApply && (
+          <FoodSearchPanel
+            query={form.mealName}
+            profileId={profileId}
+            onApply={applySuggestionValues}
+          />
+        )}
         {databaseMatches.length > 0 && (
           <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
             {databaseMatches.map((suggestion) => (
               <button
-                key={suggestion.mealName}
+                key={`${suggestion.mealName}-${suggestion.servingDescription ?? ''}`}
                 type="button"
-                className="shrink-0 rounded-xl border border-slate-200 bg-white px-3 py-2 text-left shadow-sm min-w-[150px]"
-                onClick={() => applySuggestionValues(suggestion.values)}
+                className={`shrink-0 rounded-xl border px-3 py-2 text-left shadow-sm min-w-[160px] max-w-[200px] ${
+                  pendingChip?.mealName === suggestion.mealName
+                    ? 'border-teal-400 bg-teal-50'
+                    : 'border-slate-200 bg-white'
+                }`}
+                onClick={() => applyChipSuggestion(suggestion)}
               >
-                <span className="block text-xs font-medium text-slate-700">
+                <span className="block text-xs font-medium text-slate-700 leading-snug">
                   {suggestion.mealName}
                 </span>
+                {suggestion.servingDescription && (
+                  <span className="block text-[10px] text-slate-500 mt-0.5 leading-snug">
+                    {suggestion.servingDescription}
+                  </span>
+                )}
                 <span className="block text-[10px] text-slate-400 mt-0.5">
-                  {suggestion.values.calories ?? 0} kcal · local database
+                  {suggestion.values.calories ?? 0} kcal
                 </span>
               </button>
             ))}
+          </div>
+        )}
+        {pendingChip && (
+          <div className="mt-2 rounded-xl border border-teal-100 bg-teal-50/80 px-3 py-2.5">
+            <p className="text-xs font-medium text-teal-800 mb-2">{pendingChip.mealName}</p>
+            <PortionScalePicker
+              compact
+              servingDescription={pendingChip.servingDescription}
+              baseValues={pendingChip.values}
+              onApply={(scaled, scaledServing) => {
+                const notes = scaledServing
+                  ? `Portion: ${scaledServing}. ${scaled.notes ?? pendingChip.values.notes ?? ''}`.trim()
+                  : scaled.notes;
+                applySuggestionValues({ ...scaled, notes });
+              }}
+            />
+            <button
+              type="button"
+              className="text-[10px] text-slate-400 mt-2"
+              onClick={() => setPendingChip(null)}
+            >
+              Cancel
+            </button>
           </div>
         )}
         {profileId && onSuggestApply && (

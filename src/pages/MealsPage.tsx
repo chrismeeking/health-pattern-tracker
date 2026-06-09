@@ -2,20 +2,26 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useApp } from '@/hooks/useAppData';
 import { getProfileData, removeById, generateId } from '@/services/storage';
-import { getMealsForDate, getTodayNutrition } from '@/utils/nutrition';
+import { getMealsForDate, getTodayNutrition, getNetCalorieTarget } from '@/utils/nutrition';
 import { getTodayExerciseBurn, getExerciseEntriesForDate, EXERCISE_LABELS } from '@/utils/exercise';
 import { hasModule } from '@/utils/profileModules';
 import { formatWeight, formatWeightChange, getProfileMeasurementSystem } from '@/utils/measurements';
 import { getWeightSummary } from '@/utils/health';
+import { getWeeklyNutritionSummary } from '@/utils/weeklyNutrition';
+import { favouriteToFormValues, getFavouritesForProfile } from '@/services/food/favouriteMeals';
+import { repeatMealFormValues } from '@/utils/recentMeals';
 import { todayISO, nowISO, formatTime } from '@/utils/helpers';
 import { DailyNutritionSummary } from '@/components/DailyNutritionSummary';
 import { MacroSummary } from '@/components/MacroSummary';
 import { WaterTracker } from '@/components/WaterTracker';
 import { MealCard } from '@/components/MealCard';
+import { FavouriteMealCard } from '@/components/FavouriteMealCard';
 import { StatCard } from '@/components/StatCard';
+import { WeeklyNutritionCard } from '@/components/WeeklyNutritionCard';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
+import type { Meal } from '@/types';
 
 export function MealsPage() {
   const { data, activeProfile, update } = useApp();
@@ -45,6 +51,10 @@ export function MealsPage() {
     (a, b) => new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime()
   );
   const weightSummary = getWeightSummary(profileData.weightEntries, activeProfile);
+  const favourites = getFavouritesForProfile(data, activeProfile.id).slice(0, 4);
+  const weeklyNutrition = getWeeklyNutritionSummary(data, activeProfile);
+  const calorieTarget = activeProfile.dailyCalorieTarget ?? 2000;
+  const netTarget = getNetCalorieTarget(calorieTarget, todayExercise);
 
   const mealToDelete =
     deleteId != null
@@ -67,6 +77,42 @@ export function MealsPage() {
           profileId: activeProfile.id,
           dateTime: nowISO(),
           amountMl: amount,
+        },
+      ],
+    }));
+  };
+
+  const quickLogMeal = (source: Meal | import('@/types').FavouriteMeal) => {
+    const values =
+      'mealName' in source
+        ? repeatMealFormValues(source)
+        : favouriteToFormValues(source);
+
+    const now = nowISO();
+    update((d) => ({
+      ...d,
+      meals: [
+        ...d.meals,
+        {
+          id: generateId(),
+          profileId: activeProfile.id,
+          dateTime: now,
+          mealType: values.mealType,
+          mealName: values.mealName.trim(),
+          source: values.source,
+          calories: values.calories,
+          protein: values.protein,
+          carbs: values.carbs,
+          fat: values.fat,
+          saturatedFat: values.saturatedFat || undefined,
+          fibre: values.fibre,
+          sugar: values.sugar || undefined,
+          salt: values.salt || undefined,
+          portionSize: values.portionSize,
+          notes: values.notes.trim() || undefined,
+          triggerTags: values.triggerTags,
+          createdAt: now,
+          updatedAt: now,
         },
       ],
     }));
@@ -110,6 +156,18 @@ export function MealsPage() {
         </Link>
       )}
 
+      {showExercise && (
+        <StatCard
+          label="Earned calories today"
+          value={todayExercise > 0 ? `+${todayExercise} kcal` : '—'}
+          subtext={
+            todayExercise > 0
+              ? `Net daily budget ${netTarget} kcal (target ${calorieTarget})`
+              : 'Log exercise to earn extra calories'
+          }
+        />
+      )}
+
       <DailyNutritionSummary
         totals={todayTotals}
         profile={activeProfile}
@@ -121,12 +179,32 @@ export function MealsPage() {
         <MacroSummary totals={todayTotals} profile={activeProfile} />
       )}
 
+      <WeeklyNutritionCard summary={weeklyNutrition} />
+
       {showWater && (
         <WaterTracker
           currentMl={todayWater}
           targetMl={activeProfile.waterTarget}
           onAdd={addWater}
         />
+      )}
+
+      {favourites.length > 0 && (
+        <section className="space-y-3">
+          <div className="flex justify-between items-center">
+            <h2 className="text-sm font-medium text-slate-600">Favourites</h2>
+            <Link to="/favourites" className="text-xs text-teal-500">
+              View all
+            </Link>
+          </div>
+          {favourites.map((fav) => (
+            <FavouriteMealCard
+              key={fav.id}
+              favourite={fav}
+              onQuickAdd={() => quickLogMeal(fav)}
+            />
+          ))}
+        </section>
       )}
 
       {showExercise && todayExerciseEntries.length > 0 && (
@@ -169,6 +247,7 @@ export function MealsPage() {
               key={meal.id}
               meal={meal}
               onDelete={() => setDeleteId(meal.id)}
+              onQuickLog={() => quickLogMeal(meal)}
             />
           ))
         )}
@@ -183,6 +262,7 @@ export function MealsPage() {
               meal={meal}
               showDate
               onDelete={() => setDeleteId(meal.id)}
+              onQuickLog={() => quickLogMeal(meal)}
             />
           ))}
         </section>

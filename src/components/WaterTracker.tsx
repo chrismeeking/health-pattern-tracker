@@ -1,3 +1,4 @@
+import { useRef, useState } from 'react';
 import { Card } from './Card';
 import { ProgressBar } from './ProgressBar';
 import { Button } from './Button';
@@ -10,6 +11,7 @@ interface WaterTrackerProps {
 }
 
 const QUICK_AMOUNTS = [250, 500, 750];
+const ADD_COOLDOWN_MS = 1200;
 
 export function WaterTracker({
   currentMl,
@@ -17,6 +19,18 @@ export function WaterTracker({
   onAdd,
   showTitle = true,
 }: WaterTrackerProps) {
+  const lastAddRef = useRef(0);
+  const [cooldown, setCooldown] = useState(false);
+
+  const handleAdd = (amount: number) => {
+    const now = Date.now();
+    if (now - lastAddRef.current < ADD_COOLDOWN_MS) return;
+    lastAddRef.current = now;
+    setCooldown(true);
+    onAdd(amount);
+    window.setTimeout(() => setCooldown(false), ADD_COOLDOWN_MS);
+  };
+
   return (
     <Card className="space-y-3">
       {showTitle && (
@@ -28,7 +42,13 @@ export function WaterTracker({
       <ProgressBar value={currentMl} max={targetMl} showValues unit="ml" color="teal" />
       <div className="grid grid-cols-3 gap-2">
         {QUICK_AMOUNTS.map((amt) => (
-          <Button key={amt} variant="outline" size="sm" onClick={() => onAdd(amt)}>
+          <Button
+            key={amt}
+            variant="outline"
+            size="sm"
+            disabled={cooldown}
+            onClick={() => handleAdd(amt)}
+          >
             +{amt}ml
           </Button>
         ))}

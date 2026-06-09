@@ -14,6 +14,12 @@ import { formatWeight, getProfileMeasurementSystem } from '@/utils/measurements'
 import { WeightChart } from '@/components/WeightChart';
 import { GoalCard } from '@/components/GoalCard';
 import { WeeklyProgressCard } from '@/components/WeeklyProgressCard';
+import { WeeklyNutritionCard } from '@/components/WeeklyNutritionCard';
+import { getWeeklyNutritionSummary } from '@/utils/weeklyNutrition';
+import {
+  exportGpSummaryText,
+  shareGpSummary,
+} from '@/services/export';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
@@ -36,7 +42,9 @@ export function HealthPage() {
   const weeklyProgress = getWeeklyProgress(data, activeProfile.id);
   const showSymptoms = isDigestiveProfile(activeProfile);
   const showWeightModule = hasModule(activeProfile, 'weight');
+  const showNutrition = hasModule(activeProfile, 'nutrition');
   const units = getProfileMeasurementSystem(activeProfile);
+  const weeklyNutrition = getWeeklyNutritionSummary(data, activeProfile);
 
   const activeGoals = goals.filter((g) => g.status === 'active');
   const completedGoals = goals
@@ -132,6 +140,33 @@ export function HealthPage() {
         showSymptoms={showSymptoms}
         measurementSystem={units}
       />
+
+      {showNutrition && <WeeklyNutritionCard summary={weeklyNutrition} />}
+
+      {showSymptoms && (
+        <section className="space-y-2">
+          <h2 className="text-sm font-medium text-slate-600">Export for GP</h2>
+          <p className="text-xs text-slate-400">
+            Last 2 weeks of check-ins, episodes, and trigger estimates.
+          </p>
+          <div className="grid gap-2">
+            <Button
+              variant="outline"
+              fullWidth
+              onClick={() => exportGpSummaryText(data, activeProfile.id)}
+            >
+              Download GP summary
+            </Button>
+            <Button
+              variant="secondary"
+              fullWidth
+              onClick={() => void shareGpSummary(data, activeProfile.id)}
+            >
+              Share with GP
+            </Button>
+          </div>
+        </section>
+      )}
 
       <section className="space-y-3">
         <div className="flex justify-between items-center">

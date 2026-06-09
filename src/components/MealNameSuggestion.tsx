@@ -6,7 +6,7 @@ import {
   type MealNameSuggestion,
   type SuggestedMealValues,
 } from '@/services/ai/mealNameSuggestion';
-import { Button } from './Button';
+import { PortionScalePicker } from './PortionScalePicker';
 
 interface MealNameSuggestionPanelProps {
   profileId: string;
@@ -162,10 +162,16 @@ export function MealNameSuggestionPanel({
     <div className="mt-2 rounded-xl border border-teal-100 bg-teal-50/80 px-3 py-2.5 space-y-2">
       <div className="flex items-start justify-between gap-2">
         <div>
-          <p className="text-xs font-medium text-teal-800">{suggestion.label}</p>
-          <p className="text-[11px] text-teal-700/80 mt-0.5">
-            Typical portion for “{suggestion.mealName}” — review before applying.
-          </p>
+          <p className="text-xs font-medium text-teal-800">{suggestion.mealName}</p>
+          {suggestion.servingDescription ? (
+            <p className="text-[11px] text-teal-700/90 mt-0.5 font-medium">
+              Portion: {suggestion.servingDescription}
+            </p>
+          ) : (
+            <p className="text-[11px] text-teal-700/80 mt-0.5">
+              Typical portion for “{suggestion.mealName}” — review before applying.
+            </p>
+          )}
           {(suggestion.sourceLabel || confidenceLabel) && (
             <p className="text-[10px] text-teal-700/70 mt-1">
               {[suggestion.sourceLabel, confidenceLabel].filter(Boolean).join(' · ')}
@@ -183,8 +189,16 @@ export function MealNameSuggestionPanel({
 
       <p className="text-sm text-slate-700">
         <span className="font-semibold">{values.calories ?? 0} kcal</span>
-        {' · '}
-        P {values.protein ?? 0}g · C {values.carbs ?? 0}g · F {values.fat ?? 0}g · Sat. {values.saturatedFat ?? 0}g
+        {suggestion.servingDescription && (
+          <span className="text-xs text-slate-500 font-normal">
+            {' '}
+            per {suggestion.servingDescription.toLowerCase()}
+          </span>
+        )}
+      </p>
+      <p className="text-xs text-slate-600">
+        P {values.protein ?? 0}g · C {values.carbs ?? 0}g · F {values.fat ?? 0}g · Sat.{' '}
+        {values.saturatedFat ?? 0}g
       </p>
 
       {suggestion.ingredients && suggestion.ingredients.length > 0 && (
@@ -193,26 +207,25 @@ export function MealNameSuggestionPanel({
         </p>
       )}
 
-      <div className="flex gap-2">
-        <Button
+      <PortionScalePicker
+        servingDescription={suggestion.servingDescription}
+        baseValues={values}
+        onApply={(scaled, scaledServing) => {
+          const notes = scaledServing
+            ? `Portion: ${scaledServing}. ${scaled.notes ?? ''}`.trim()
+            : scaled.notes;
+          onApply({ ...scaled, notes });
+        }}
+      />
+      {hasManualNutrition && (
+        <button
           type="button"
-          size="sm"
-          variant="secondary"
-          onClick={() => onApply(suggestion.values)}
+          className="text-xs text-slate-500 font-medium"
+          onClick={() => setDismissedFor(normalise(trimmed))}
         >
-          Apply suggestion
-        </Button>
-        {hasManualNutrition && (
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            onClick={() => setDismissedFor(normalise(trimmed))}
-          >
-            Keep mine
-          </Button>
-        )}
-      </div>
+          Keep my values
+        </button>
+      )}
     </div>
   );
 }

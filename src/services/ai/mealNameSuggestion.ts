@@ -33,6 +33,8 @@ export interface MealNameSuggestion {
   source: MealNameSuggestionSource;
   label: string;
   values: SuggestedMealValues;
+  /** Typical portion (e.g. 1 glass 200ml, 1 slice 36g). */
+  servingDescription?: string;
   ingredients?: string[];
   confidence?: ParsedMealAnalysis['confidence'];
   notes?: string;
@@ -113,7 +115,10 @@ export function databaseEntryToSuggestion(entry: UkMealDatabaseEntry): MealNameS
   return {
     mealName: entry.name,
     source: 'local-database',
-    label: 'From local UK meal database',
+    label: entry.servingDescription
+      ? `${entry.name} · ${entry.servingDescription}`
+      : 'From local UK meal database',
+    servingDescription: entry.servingDescription,
     values: {
       mealName: entry.name,
       source: 'unknown',

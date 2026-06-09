@@ -1,8 +1,10 @@
 import { Link } from 'react-router-dom';
 import { useApp } from '@/hooks/useAppData';
+import { getProfileData } from '@/services/storage';
 import type { ProfileModule } from '@/types';
 import { Card } from '@/components/Card';
 import { hasHealthTracking, hasModule } from '@/utils/profileModules';
+import { getTodayCheckIn } from '@/utils/symptoms';
 
 interface AddAction {
   to: string;
@@ -26,9 +28,13 @@ const ACTIONS: AddAction[] = [
 ];
 
 export function AddPage() {
-  const { activeProfile } = useApp();
+  const { activeProfile, data } = useApp();
 
   if (!activeProfile) return null;
+
+  const checkedInToday = Boolean(
+    getTodayCheckIn(getProfileData(data, activeProfile.id).dailyCheckIns)
+  );
 
   const actions = ACTIONS.filter((action) => {
     if (action.always) return true;
@@ -51,17 +57,28 @@ export function AddPage() {
         Options match what {activeProfile.name} has enabled in their profile.
       </p>
       <div className="grid gap-3">
-        {actions.map((action) => (
-          <Link key={action.to} to={action.to}>
-            <Card className="flex items-center gap-4 active:scale-[0.99] transition-transform">
-              <span className="text-2xl">{action.icon}</span>
-              <div>
-                <h3 className="font-medium text-slate-800 dark:text-slate-100">{action.label}</h3>
-                <p className="text-xs text-slate-400">{action.desc}</p>
-              </div>
-            </Card>
-          </Link>
-        ))}
+        {actions.map((action) => {
+          const doneToday = action.to === '/add/check-in' && checkedInToday;
+          return (
+            <Link key={action.to} to={action.to}>
+              <Card
+                className={`flex items-center gap-4 active:scale-[0.99] transition-transform ${
+                  doneToday ? 'opacity-80' : ''
+                }`}
+              >
+                <span className="text-2xl">{doneToday ? '✓' : action.icon}</span>
+                <div>
+                  <h3 className="font-medium text-slate-800 dark:text-slate-100">
+                    {doneToday ? 'Checked in today' : action.label}
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    {doneToday ? 'View summary or log a symptom if things change' : action.desc}
+                  </p>
+                </div>
+              </Card>
+            </Link>
+          );
+        })}
       </div>
     </div>
   );

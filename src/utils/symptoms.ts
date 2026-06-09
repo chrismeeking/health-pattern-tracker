@@ -1,5 +1,22 @@
 import type { DailyCheckIn, Meal, SymptomEpisode } from '@/types';
-import { formatDate, formatTime } from './helpers';
+import { formatDate, formatTime, todayISO } from './helpers';
+
+const CHECK_IN_SYMPTOM_FIELDS: { key: keyof DailyCheckIn; label: string }[] = [
+  { key: 'mildBloatingPressure', label: 'mild bloating' },
+  { key: 'indigestion', label: 'indigestion' },
+  { key: 'painEpisode', label: 'pain' },
+  { key: 'gas', label: 'gas' },
+  { key: 'nausea', label: 'nausea' },
+  { key: 'sweating', label: 'sweating' },
+  { key: 'vomiting', label: 'vomiting' },
+  { key: 'fever', label: 'fever' },
+  { key: 'diarrhoea', label: 'diarrhoea' },
+  { key: 'constipation', label: 'constipation' },
+  { key: 'headache', label: 'headache' },
+  { key: 'tiredness', label: 'tiredness' },
+  { key: 'skinIssue', label: 'skin issue' },
+  { key: 'sleepAffected', label: 'sleep affected' },
+];
 
 export const ISSUE_SUGGESTED_TRIGGERS: Record<string, string[]> = {
   digestion: [
@@ -36,20 +53,67 @@ export function getDaysSinceSevereEpisode(episodes: SymptomEpisode[]): number | 
   return Math.floor((now.getTime() - last.getTime()) / (1000 * 60 * 60 * 24));
 }
 
-export function getLastCheckInStatus(checkIns: DailyCheckIn[]): string {
+export function getTodayCheckIn(
+  checkIns: DailyCheckIn[],
+  date: string = todayISO()
+): DailyCheckIn | null {
+  return checkIns.find((c) => c.date === date) ?? null;
+}
+
+export function summarizeDailyCheckIn(
+  checkIn: DailyCheckIn,
+  issueName?: (id: string) => string | undefined
+): string {
+  if (checkIn.noSymptomsReported) return 'No symptoms';
+
+  const symptoms = CHECK_IN_SYMPTOM_FIELDS.filter(({ key }) => checkIn[key]).map(
+    ({ label }) => label
+  );
+  const issues = checkIn.selectedIssues
+    .map((id) => issueName?.(id))
+    .filter((name): name is string => Boolean(name));
+
+  const parts: string[] = [];
+  if (symptoms.length > 0) parts.push(symptoms.join(', '));
+  if (issues.length > 0) parts.push(issues.join(', '));
+  if (checkIn.stressLevel != null) parts.push(`stress ${checkIn.stressLevel}/5`);
+  if (checkIn.energyLevel != null) parts.push(`energy ${checkIn.energyLevel}/5`);
+
+  return parts.length > 0 ? parts.join(' · ') : 'Symptoms reported';
+}
+
+export function getCheckInHomeStat(
+  checkIns: DailyCheckIn[],
+  issueName?: (id: string) => string | undefined
+): { value: string; subtext: string } {
+  const today = getTodayCheckIn(checkIns);
+  if (today) {
+    return {
+      value: 'Done',
+      subtext: summarizeDailyCheckIn(today, issueName),
+    };
+  }
+
   const recent = [...checkIns].sort(
     (a, b) => new Date(b.checkInTime).getTime() - new Date(a.checkInTime).getTime()
   )[0];
 
-  if (!recent) return 'No check-ins yet';
-  if (recent.noSymptomsReported) return 'Last check-in: no symptoms';
-  if (recent.indigestion) return 'Last check-in: indigestion reported';
-  if (recent.mildBloatingPressure) return 'Last check-in: mild bloating';
-  if (recent.gas) return 'Last check-in: gas reported';
-  if (recent.painEpisode) return 'Last check-in: pain reported';
-  if (recent.headache) return 'Last check-in: headache reported';
-  if (recent.tiredness) return 'Last check-in: tiredness reported';
-  return 'Last check-in: symptoms reported';
+  if (!recent) {
+    return { value: '—', subtext: 'Not checked in yet today' };
+  }
+
+  return {
+    value: 'Pending',
+    subtext: `Last: ${summarizeDailyCheckIn(recent, issueName)}`,
+  };
+}
+
+/** @deprecated Prefer getCheckInHomeStat for dashboard display. */
+export function getLastCheckInStatus(checkIns: DailyCheckIn[]): string {
+  const stat = getCheckInHomeStat(checkIns);
+  if (stat.value === 'Done') return `Checked in today · ${stat.subtext}`;
+  if (stat.value === 'Pending') return stat.subtext;
+  return stat.subtext;
 }
 
 export function getRecentSymptoms(episodes: SymptomEpisode[], limit = 3): SymptomEpisode[] {

@@ -31,7 +31,11 @@ const baseNavItems: NavItem[] = [
     to: '/profile',
     label: 'Settings',
     icon: 'settings',
-    match: (path) => path.startsWith('/profile'),
+    match: (path) =>
+      path.startsWith('/profile') ||
+      path.startsWith('/favourites') ||
+      path.startsWith('/saved-foods') ||
+      path.startsWith('/insights'),
   },
 ];
 

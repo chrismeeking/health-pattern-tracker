@@ -60,10 +60,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!isCloudSyncAvailable()) return;
 
-    void restoreSessionFromSupabase().then((meta) => {
+    void (async () => {
+      const meta = await restoreSessionFromSupabase();
       setSyncMeta(meta);
       saveSyncMeta(meta);
-    });
+
+      if (!meta.session.userId) return;
+
+      const result = await pullFromCloud(meta);
+      if (result.ok && result.data) {
+        const local = loadData();
+        const merged = {
+          ...result.data,
+          activeProfileId: local.activeProfileId ?? result.data.activeProfileId,
+        };
+        saveData(merged);
+        setData(merged);
+        setSyncMeta(loadSyncMeta());
+      }
+    })();
   }, []);
 
   const setActiveProfile = useCallback((id: string) => {

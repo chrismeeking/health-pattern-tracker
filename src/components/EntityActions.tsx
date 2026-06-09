@@ -6,6 +6,7 @@ interface EntityActionsProps {
   onDelete?: () => void;
   editLabel?: string;
   deleteLabel?: string;
+  extraAction?: { label: string; onClick: () => void };
 }
 
 export function EntityActions({
@@ -13,9 +14,15 @@ export function EntityActions({
   onDelete,
   editLabel = 'Edit',
   deleteLabel = 'Delete',
+  extraAction,
 }: EntityActionsProps) {
   return (
     <div className="flex gap-2 pt-2 border-t border-slate-100 mt-2">
+      {extraAction && (
+        <Button variant="secondary" size="sm" className="flex-1" onClick={extraAction.onClick}>
+          {extraAction.label}
+        </Button>
+      )}
       {editTo && (
         <Link to={editTo} className="flex-1">
           <Button variant="outline" size="sm" fullWidth>

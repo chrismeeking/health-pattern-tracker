@@ -25,10 +25,12 @@ const ALL_LINKS: QuickLink[] = [
 interface QuickNavLinksProps {
   profile: Profile;
   compact?: boolean;
+  checkInDoneToday?: boolean;
 }
 
-export function QuickNavLinks({ profile, compact = false }: QuickNavLinksProps) {
+export function QuickNavLinks({ profile, compact = false, checkInDoneToday = false }: QuickNavLinksProps) {
   const links = ALL_LINKS.filter((link) => {
+    if (link.id === 'check-in' && checkInDoneToday) return false;
     if (link.module === 'health') return hasHealthTracking(profile);
     if (link.module === 'healthHub') return showHealthNav(profile);
     if (link.module) return hasModule(profile, link.module);

@@ -3,7 +3,9 @@ import { useApp } from '@/hooks/useAppData';
 import { generateId, getProfileData } from '@/services/storage';
 import { todayISO, nowISO } from '@/utils/helpers';
 import { DailyCheckInForm, type CheckInFormValues } from '@/components/DailyCheckInForm';
+import { TodayCheckInSummary } from '@/components/HomeCheckInSection';
 import type { DailyCheckIn } from '@/types';
+import { getTodayCheckIn } from '@/utils/symptoms';
 import { Card } from '@/components/Card';
 import { Button } from '@/components/Button';
 
@@ -46,23 +48,33 @@ export function DailyCheckInPage() {
 
   const profileData = getProfileData(data, activeProfile.id);
   const today = todayISO();
-  const alreadyCheckedIn = profileData.dailyCheckIns.some((c) => c.date === today);
+  const todayCheckIn = getTodayCheckIn(profileData.dailyCheckIns, today);
   const activeIssues = profileData.issues
     .filter((i) => i.active)
     .map((i) => ({ id: i.id, name: i.name }));
+  const issueName = (issueId: string) =>
+    profileData.issues.find((i) => i.id === issueId)?.name;
 
-  if (alreadyCheckedIn) {
+  if (todayCheckIn) {
     return (
       <div className="space-y-4">
         <h1 className="text-xl font-semibold text-slate-800">Daily Check-In</h1>
-        <Card className="text-center space-y-3 py-6">
-          <p className="text-sm text-slate-600">You&apos;ve already checked in today.</p>
-          <p className="text-xs text-slate-400">Come back tomorrow for your next check-in.</p>
-          <Link to="/">
-            <Button variant="secondary" size="sm">
-              Back to home
-            </Button>
-          </Link>
+        <TodayCheckInSummary checkIn={todayCheckIn} issueName={issueName} />
+        <Card className="space-y-3 py-4 text-center">
+          <p className="text-xs text-slate-500">
+            One check-in per day keeps your baseline clear. If something new happens, log a
+            symptom instead.
+          </p>
+          <div className="flex flex-wrap justify-center gap-2">
+            <Link to="/add/symptom">
+              <Button size="sm">Log symptom</Button>
+            </Link>
+            <Link to="/">
+              <Button variant="secondary" size="sm">
+                Back to home
+              </Button>
+            </Link>
+          </div>
         </Card>
       </div>
     );

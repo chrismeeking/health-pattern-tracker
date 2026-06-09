@@ -7,6 +7,11 @@ import {
   handleAnalyseMealRequest,
   RequestValidationError,
 } from './lib/analyseMealHandler.js';
+import {
+  FoodSearchValidationError,
+  handleFoodBarcodeRequest,
+  handleFoodSearchRequest,
+} from './lib/foodSearchHandler.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const distDir = path.join(process.cwd(), 'dist');
@@ -51,6 +56,32 @@ app.post('/api/analyse-meal', async (req, res) => {
       return;
     }
     res.status(500).json({ error: 'Meal analysis failed.' });
+  }
+});
+
+app.get('/api/food/search', async (req, res) => {
+  try {
+    const result = await handleFoodSearchRequest(req.query as { q?: string; limit?: string });
+    res.json(result);
+  } catch (error) {
+    if (error instanceof FoodSearchValidationError) {
+      res.status(error.status).json({ error: error.message });
+      return;
+    }
+    res.status(500).json({ error: 'Food search failed.' });
+  }
+});
+
+app.get('/api/food/barcode/:code', async (req, res) => {
+  try {
+    const result = await handleFoodBarcodeRequest(req.params.code);
+    res.json(result);
+  } catch (error) {
+    if (error instanceof FoodSearchValidationError) {
+      res.status(error.status).json({ error: error.message });
+      return;
+    }
+    res.status(500).json({ error: 'Barcode lookup failed.' });
   }
 });
 
