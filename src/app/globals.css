@@ -17,15 +17,32 @@
   --font-display: var(--font-display);
 }
 
+html,
+body {
+  height: 100%;
+}
+
 body {
   min-height: 100dvh;
   color: var(--ink);
   font-family: var(--font-sans), system-ui, sans-serif;
   background:
-    radial-gradient(1200px 600px at 10% -10%, #d8ebe7 0%, transparent 55%),
-    radial-gradient(900px 500px at 100% 0%, #dce6ee 0%, transparent 50%),
+    radial-gradient(900px 480px at 8% -20%, #d8ebe7 0%, transparent 55%),
+    radial-gradient(700px 420px at 100% 0%, #dce6ee 0%, transparent 50%),
     linear-gradient(180deg, #e8f0f2 0%, #e4ecef 45%, #dde6ea 100%);
   background-attachment: fixed;
+}
+
+/* Public board: lock to viewport on kiosk / NCR */
+.board-shell {
+  box-sizing: border-box;
+}
+
+.today-strip {
+  background: linear-gradient(145deg, #ffffff 0%, #f3f8f7 100%);
+  box-shadow: 0 4px 16px rgba(28, 36, 40, 0.06);
+  border: 1px solid rgba(42, 122, 110, 0.14);
+  max-height: 20vh;
 }
 
 .today-panel {
@@ -39,16 +56,44 @@ body {
   min-width: 48px;
 }
 
-/* Prefer large, readable form controls on touchscreens */
 input[type="date"],
 input[type="time"],
 select {
   min-height: 52px;
 }
 
-@media (min-width: 1280px) {
-  /* Comfortable 16:9 kiosk density */
+/* Primary target: ~1024×768 4:3 NCR */
+@media (min-width: 900px) and (max-height: 820px) {
   body {
-    font-size: 17px;
+    overflow: hidden;
+    font-size: 15px;
+  }
+
+  .board-shell {
+    height: 100dvh;
+    max-height: 100dvh;
+    overflow: hidden;
+  }
+
+  .today-strip {
+    max-height: 18vh;
+  }
+}
+
+/* Phones: allow natural scroll */
+@media (max-width: 640px) {
+  body {
+    overflow: auto;
+  }
+
+  .board-shell {
+    height: auto;
+    min-height: 100dvh;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .today-strip {
+    max-height: none;
   }
 }

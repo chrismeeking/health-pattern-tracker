@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { formatWeekRangeLabel } from "@/lib/date";
 
 type Props = {
@@ -10,6 +9,9 @@ type Props = {
   onNext: () => void;
   onThisWeek: () => void;
 };
+
+const btn =
+  "inline-flex min-h-10 min-w-10 items-center justify-center rounded-xl bg-white/80 px-3 py-2 text-sm font-semibold text-[var(--ink)] shadow-sm ring-1 ring-black/5 active:scale-[0.98] disabled:opacity-40";
 
 export function WeekNavigation({
   monday,
@@ -22,42 +24,27 @@ export function WeekNavigation({
 
   return (
     <nav
-      className="flex flex-wrap items-center justify-between gap-3"
+      className="flex min-w-0 flex-1 items-center justify-end gap-1.5 sm:gap-2"
       aria-label="Week navigation"
     >
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={onPrev}
-          className="touch-target rounded-2xl bg-white/70 px-5 py-3 text-base font-medium text-[var(--ink)] shadow-sm ring-1 ring-black/5 active:scale-[0.98]"
-        >
-          Previous
-        </button>
-        <button
-          type="button"
-          onClick={onThisWeek}
-          disabled={isCurrentWeek}
-          className="touch-target rounded-2xl bg-white/70 px-5 py-3 text-base font-medium text-[var(--ink)] shadow-sm ring-1 ring-black/5 enabled:active:scale-[0.98] disabled:opacity-40"
-        >
-          This week
-        </button>
-        <button
-          type="button"
-          onClick={onNext}
-          className="touch-target rounded-2xl bg-white/70 px-5 py-3 text-base font-medium text-[var(--ink)] shadow-sm ring-1 ring-black/5 active:scale-[0.98]"
-        >
-          Next
-        </button>
-      </div>
-
-      <p className="text-lg font-medium text-[var(--ink)]">{label}</p>
-
-      <Link
-        href="/admin"
-        className="touch-target rounded-2xl px-4 py-3 text-sm font-medium text-[var(--muted)] underline-offset-4 hover:underline"
+      <p className="mr-1 hidden truncate text-sm font-medium text-[var(--muted)] md:block">
+        {label}
+      </p>
+      <button type="button" onClick={onPrev} className={btn} aria-label="Previous week">
+        Prev
+      </button>
+      <button
+        type="button"
+        onClick={onThisWeek}
+        disabled={isCurrentWeek}
+        className={btn}
+        aria-label="This week"
       >
-        Admin
-      </Link>
+        This week
+      </button>
+      <button type="button" onClick={onNext} className={btn} aria-label="Next week">
+        Next
+      </button>
     </nav>
   );
 }

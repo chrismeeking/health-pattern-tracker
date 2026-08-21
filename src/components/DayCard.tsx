@@ -8,43 +8,43 @@ type Props = {
   date: string;
   entries: ScheduleEntry[];
   isToday: boolean;
+  /** Fill remaining board height (NCR week columns) */
+  fill?: boolean;
 };
 
-export function DayCard({ date, entries, isToday }: Props) {
+export function DayCard({ date, entries, isToday, fill = false }: Props) {
   const { weekday, dayMonth } = formatDayHeading(date);
+  const shortDay = weekday.slice(0, 3);
 
   return (
     <section
-      className={`flex min-h-[280px] flex-col rounded-3xl p-4 transition-shadow ${
+      className={`flex min-h-0 flex-col overflow-hidden rounded-2xl p-2 ${
+        fill ? "h-full" : ""
+      } ${
         isToday
-          ? "bg-white shadow-[0_8px_30px_rgba(42,122,110,0.18)] ring-2 ring-[var(--accent)]"
-          : "bg-white/80 shadow-sm ring-1 ring-black/5"
+          ? "bg-white shadow-[0_4px_18px_rgba(42,122,110,0.16)] ring-2 ring-[var(--accent)]"
+          : "bg-white/85 shadow-sm ring-1 ring-black/5"
       }`}
     >
-      <header className="mb-3">
-        <p
-          className={`text-xs font-semibold uppercase tracking-[0.14em] ${
-            isToday ? "text-[var(--accent)]" : "text-[var(--muted)]"
-          }`}
-        >
-          {isToday ? "Today" : weekday}
-        </p>
-        <h2 className="mt-0.5 text-2xl font-semibold tracking-tight text-[var(--ink)]">
-          {isToday ? weekday : dayMonth}
-        </h2>
-        {isToday && (
-          <p className="text-sm text-[var(--muted)]">{dayMonth}</p>
-        )}
+      <header className="mb-1.5 shrink-0 border-b border-black/5 pb-1">
+        <div className="flex items-baseline justify-between gap-1">
+          <h2
+            className={`text-sm font-bold uppercase tracking-wide ${
+              isToday ? "text-[var(--accent)]" : "text-[var(--ink)]"
+            }`}
+          >
+            {shortDay}
+          </h2>
+          <p className="text-xs font-medium text-[var(--muted)]">{dayMonth}</p>
+        </div>
       </header>
 
-      <div className="flex flex-1 flex-col gap-2.5">
+      <div className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto overscroll-contain">
         {entries.length === 0 ? (
-          <p className="mt-6 text-center text-base text-[var(--muted)]">
-            Nothing scheduled
-          </p>
+          <p className="py-3 text-center text-xs text-[var(--muted)]">No plans</p>
         ) : (
           entries.map((entry) => (
-            <ScheduleBlock key={entry.id} entry={entry} />
+            <ScheduleBlock key={entry.id} entry={entry} dense />
           ))
         )}
       </div>

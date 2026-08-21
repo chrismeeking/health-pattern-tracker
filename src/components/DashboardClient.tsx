@@ -6,7 +6,6 @@ import { WeekView } from "@/components/WeekView";
 import { WeekNavigation } from "@/components/WeekNavigation";
 import { InactivityReset } from "@/components/InactivityReset";
 import {
-  formatDayHeading,
   shiftWeek,
   todayDateString,
   weekStartMonday,
@@ -14,6 +13,7 @@ import {
 import { groupByDate, sortEntries } from "@/lib/schedule/format";
 import type { ScheduleEntry } from "@/lib/schedule/schema";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import { format, parseISO } from "date-fns";
 
 type Props = {
   initialMonday: string;
@@ -30,6 +30,11 @@ async function fetchWeek(monday: string): Promise<ScheduleEntry[]> {
   if (!res.ok) throw new Error("Failed to refresh schedule");
   const data = (await res.json()) as { entries: ScheduleEntry[] };
   return data.entries;
+}
+
+function todayStripLabel(dateStr: string): string {
+  const d = parseISO(`${dateStr}T12:00:00`);
+  return format(d, "EEE d MMM").toUpperCase();
 }
 
 export function DashboardClient({
@@ -60,7 +65,6 @@ export function DashboardClient({
     }
   }, []);
 
-  // Keep "today" accurate across midnight on a always-on kiosk
   useEffect(() => {
     const tick = () => {
       const t = todayDateString();
@@ -70,7 +74,6 @@ export function DashboardClient({
     return () => clearInterval(id);
   }, []);
 
-  // Poll lightly; also used when Supabase realtime is unavailable
   useEffect(() => {
     const id = setInterval(() => {
       void refresh(monday);
@@ -78,7 +81,6 @@ export function DashboardClient({
     return () => clearInterval(id);
   }, [monday, refresh]);
 
-  // Supabase realtime when configured (and not demo)
   useEffect(() => {
     if (demoMode || !isSupabaseConfigured()) return;
 
@@ -112,8 +114,6 @@ export function DashboardClient({
     return sortEntries(byDate[today] ?? []);
   }, [entries, today]);
 
-  const todayHeading = formatDayHeading(today);
-
   const goPrev = () => {
     const next = shiftWeek(monday, -1);
     setMonday(next);
@@ -131,38 +131,34 @@ export function DashboardClient({
   };
 
   return (
-    <div className="mx-auto flex min-h-full w-full max-w-[1800px] flex-col gap-6 px-5 py-5 sm:px-8 sm:py-6">
-      <header className="flex items-end justify-between gap-4">
-        <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[var(--accent)]">
-            Household board
-          </p>
-          <h1 className="font-[family-name:var(--font-display)] text-5xl font-semibold tracking-tight text-[var(--ink)] sm:text-6xl">
+    <div className="board-shell mx-auto flex h-dvh max-h-dvh w-full max-w-[1400px] flex-col gap-2 overflow-hidden px-2.5 py-2 sm:px-3 sm:py-2.5">
+      <header className="flex shrink-0 items-center gap-2">
+        <div className="flex min-w-0 items-baseline gap-2">
+          <h1 className="font-[family-name:var(--font-display)] text-xl font-semibold tracking-tight text-[var(--ink)] sm:text-2xl">
             Homeboard
           </h1>
+          {demoMode && (
+            <span className="rounded-md bg-white/70 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-[var(--muted)] ring-1 ring-black/5">
+              Demo
+            </span>
+          )}
         </div>
-        {demoMode && (
-          <span className="rounded-xl bg-white/70 px-3 py-2 text-sm text-[var(--muted)] ring-1 ring-black/5">
-            Demo data
-          </span>
-        )}
+        <WeekNavigation
+          monday={monday}
+          isCurrentWeek={isCurrentWeek}
+          onPrev={goPrev}
+          onNext={goNext}
+          onThisWeek={goThisWeek}
+        />
       </header>
 
       <TodaySummary
         entries={todayEntries}
-        todayLabel={`${todayHeading.weekday} · ${todayHeading.dayMonth}`}
-      />
-
-      <WeekNavigation
-        monday={monday}
-        isCurrentWeek={isCurrentWeek}
-        onPrev={goPrev}
-        onNext={goNext}
-        onThisWeek={goThisWeek}
+        todayShortLabel={todayStripLabel(today)}
       />
 
       {error && (
-        <p className="rounded-2xl bg-[#fde8e8] px-4 py-3 text-base text-[#7a1224]">
+        <p className="shrink-0 rounded-xl bg-[#fde8e8] px-3 py-1.5 text-sm text-[#7a1224]">
           {error}
         </p>
       )}

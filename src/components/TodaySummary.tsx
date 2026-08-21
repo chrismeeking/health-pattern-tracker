@@ -1,87 +1,95 @@
 "use client";
 
 import { EmployerBadge } from "@/components/EmployerBadge";
-import { summariseEntry } from "@/lib/schedule/format";
+import { formatTimeDisplay } from "@/lib/date";
+import { getEmployerTheme, isOffDayEmployer } from "@/lib/employers";
 import type { ScheduleEntry } from "@/lib/schedule/schema";
-import { getEmployerTheme } from "@/lib/employers";
 
 type Props = {
   entries: ScheduleEntry[];
-  todayLabel: string;
+  /** e.g. FRI 21 AUG */
+  todayShortLabel: string;
 };
 
-export function TodaySummary({ entries, todayLabel }: Props) {
-  if (entries.length === 0) {
-    return (
-      <section className="today-panel rounded-[2rem] px-8 py-8 sm:px-10 sm:py-10">
-        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">
-          Today
-        </p>
-        <p className="mt-1 text-base text-[var(--muted)]">{todayLabel}</p>
-        <h1 className="mt-4 font-[family-name:var(--font-display)] text-4xl font-semibold tracking-tight text-[var(--ink)] sm:text-5xl">
-          Nothing scheduled
-        </h1>
-        <p className="mt-3 max-w-xl text-xl text-[var(--muted)]">
-          A quiet day — no work blocks on the board.
-        </p>
-      </section>
-    );
+function modeLabel(entry: ScheduleEntry): string {
+  if (isOffDayEmployer(entry.employer) || entry.work_mode === "Off") {
+    return entry.employer === "Annual Leave" ? "Leave" : "Off";
   }
+  if (entry.work_mode === "On site" && entry.location) {
+    return `On site — ${entry.location}`;
+  }
+  if (entry.work_mode === "Office" && entry.location) {
+    return `Office — ${entry.location}`;
+  }
+  if (entry.work_mode === "Travelling" && entry.location) {
+    return `Travelling — ${entry.location}`;
+  }
+  return entry.work_mode;
+}
 
-  const primary = entries[0];
-  const theme = getEmployerTheme(primary.employer);
-  const lines = summariseEntry(primary);
-  const extra = entries.slice(1);
+function hoursLabel(entry: ScheduleEntry): string | null {
+  if (entry.is_all_day) return "All day";
+  const start = formatTimeDisplay(entry.start_time);
+  const end = formatTimeDisplay(entry.end_time);
+  if (start && end) return `${start}–${end}`;
+  if (start) return `From ${start}`;
+  return null;
+}
+
+function freeLabel(entry: ScheduleEntry): string | null {
+  const t = formatTimeDisplay(entry.expected_home_time);
+  if (!t) return null;
+  if (entry.work_mode === "WFH" || entry.work_mode === "Off" || isOffDayEmployer(entry.employer)) {
+    return `FREE ~${t}`;
+  }
+  return `HOME ~${t}`;
+}
+
+function EntryLine({ entry }: { entry: ScheduleEntry }) {
+  const theme = getEmployerTheme(entry.employer);
+  const parts = [
+    modeLabel(entry),
+    hoursLabel(entry),
+    freeLabel(entry),
+  ].filter(Boolean);
 
   return (
-    <section
-      className="today-panel rounded-[2rem] px-8 py-8 sm:px-10 sm:py-10"
-      style={{
-        borderColor: `${theme.accent}33`,
-      }}
-    >
-      <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">
-        Today
+    <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+      <EmployerBadge employer={entry.employer} size="md" />
+      <p
+        className="min-w-0 text-base font-semibold tracking-tight sm:text-lg"
+        style={{ color: theme.text }}
+      >
+        {parts.join("  ·  ")}
       </p>
-      <p className="mt-1 text-base text-[var(--muted)]">{todayLabel}</p>
+      {entry.household_note ? (
+        <span className="text-sm text-[var(--muted)]">{entry.household_note}</span>
+      ) : null}
+    </div>
+  );
+}
 
-      <div className="mt-5 flex flex-wrap items-center gap-3">
-        <EmployerBadge employer={primary.employer} size="lg" />
+export function TodaySummary({ entries, todayShortLabel }: Props) {
+  return (
+    <section className="today-strip shrink-0 overflow-hidden rounded-2xl px-3 py-2.5 sm:px-4 sm:py-3">
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+        <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--accent)]">
+          Today
+        </p>
+        <p className="text-sm font-semibold uppercase tracking-wide text-[var(--ink)]">
+          {todayShortLabel}
+        </p>
       </div>
 
-      <div className="mt-4 space-y-1">
-        {lines.slice(1).map((line, i) => (
-          <p
-            key={`${line}-${i}`}
-            className={
-              i === 0
-                ? "font-[family-name:var(--font-display)] text-4xl font-semibold tracking-tight text-[var(--ink)] sm:text-5xl"
-                : i === 1
-                  ? "text-2xl font-medium text-[var(--ink)] sm:text-3xl"
-                  : "text-xl text-[var(--muted)] sm:text-2xl"
-            }
-          >
-            {line}
-          </p>
-        ))}
-      </div>
-
-      {extra.length > 0 && (
-        <div className="mt-6 flex flex-wrap gap-2 border-t border-black/5 pt-5">
-          {extra.map((entry) => {
-            const extraLines = summariseEntry(entry);
-            return (
-              <div
-                key={entry.id}
-                className="rounded-2xl bg-white/70 px-4 py-3 ring-1 ring-black/5"
-              >
-                <EmployerBadge employer={entry.employer} size="sm" />
-                <p className="mt-1.5 text-base font-medium text-[var(--ink)]">
-                  {extraLines.slice(1).join(" · ")}
-                </p>
-              </div>
-            );
-          })}
+      {entries.length === 0 ? (
+        <p className="mt-1.5 text-lg font-semibold text-[var(--ink)]">
+          Nothing scheduled
+        </p>
+      ) : (
+        <div className="mt-1.5 flex flex-col gap-1.5">
+          {entries.map((entry) => (
+            <EntryLine key={entry.id} entry={entry} />
+          ))}
         </div>
       )}
     </section>
