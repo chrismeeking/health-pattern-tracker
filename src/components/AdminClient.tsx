@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { ScheduleForm } from "@/components/ScheduleForm";
 import { ScheduleBlock } from "@/components/ScheduleBlock";
 import { WeekBulkUpload } from "@/components/WeekBulkUpload";
+import { ScheduleSuggestions } from "@/components/ScheduleSuggestions";
 import {
   formatDayHeading,
   formatWeekRangeLabel,
@@ -16,6 +17,7 @@ import {
 } from "@/lib/date";
 import { groupByDate } from "@/lib/schedule/format";
 import type { ScheduleEntry } from "@/lib/schedule/schema";
+import type { SuggestedEntry } from "@/lib/schedule/suggestions";
 import { getBankHolidayNote } from "@/lib/bank-holidays";
 
 type Props = {
@@ -37,6 +39,7 @@ export function AdminClient({
   const [entries, setEntries] = useState(initialEntries);
   const [editing, setEditing] = useState<ScheduleEntry | null>(null);
   const [creating, setCreating] = useState(false);
+  const [draft, setDraft] = useState<SuggestedEntry | null>(null);
   const [bulkWeek, setBulkWeek] = useState(false);
   const [selectedDate, setSelectedDate] = useState(initialToday);
   const [message, setMessage] = useState<string | null>(null);
@@ -108,7 +111,7 @@ export function AdminClient({
     router.refresh();
   }
 
-  const showForm = creating || editing;
+  const showForm = creating || editing || !!draft;
 
   return (
     <div className="mx-auto flex min-h-full w-full max-w-[1400px] flex-col gap-6 px-5 py-5 sm:px-8">
@@ -173,6 +176,7 @@ export function AdminClient({
           className="touch-target ml-auto rounded-2xl bg-white px-5 py-3 text-base font-semibold ring-1 ring-black/10"
           onClick={() => {
             setEditing(null);
+            setDraft(null);
             setCreating(false);
             setBulkWeek(true);
           }}
@@ -184,6 +188,7 @@ export function AdminClient({
           className="touch-target rounded-2xl bg-[var(--accent)] px-5 py-3 text-base font-semibold text-white"
           onClick={() => {
             setEditing(null);
+            setDraft(null);
             setBulkWeek(false);
             setCreating(true);
             setSelectedDate(today);
@@ -198,6 +203,23 @@ export function AdminClient({
           {message}
         </p>
       )}
+
+      <ScheduleSuggestions
+        key={monday}
+        monday={monday}
+        targetEntries={entries}
+        onSaved={async (msg) => {
+          setMessage(msg);
+          await refresh(monday);
+        }}
+        onEditDraft={(suggested) => {
+          setBulkWeek(false);
+          setEditing(null);
+          setCreating(false);
+          setSelectedDate(suggested.date);
+          setDraft(suggested);
+        }}
+      />
 
       {bulkWeek && (
         <section className="rounded-3xl bg-[var(--panel)] p-5 shadow-sm ring-1 ring-black/5 sm:p-6">
@@ -220,19 +242,27 @@ export function AdminClient({
       {showForm && (
         <section className="rounded-3xl bg-[var(--panel)] p-5 shadow-sm ring-1 ring-black/5 sm:p-6">
           <h2 className="mb-4 text-2xl font-semibold text-[var(--ink)]">
-            {editing ? "Edit entry" : "Create entry"}
+            {editing ? "Edit entry" : draft ? "Edit suggestion" : "Create entry"}
           </h2>
           <ScheduleForm
-            key={editing?.id ?? `new-${selectedDate}`}
+            key={
+              editing?.id ??
+              (draft
+                ? `draft-${draft.date}-${draft.employer}-${draft.start_time}`
+                : `new-${selectedDate}`)
+            }
             initial={editing}
+            draft={editing ? null : draft}
             defaultDate={selectedDate}
             onCancel={() => {
               setCreating(false);
               setEditing(null);
+              setDraft(null);
             }}
             onSaved={async () => {
               setCreating(false);
               setEditing(null);
+              setDraft(null);
               setMessage("Saved");
               await refresh(monday);
             }}
@@ -273,6 +303,7 @@ export function AdminClient({
                   onClick={() => {
                     setSelectedDate(date);
                     setEditing(null);
+                    setDraft(null);
                     setBulkWeek(false);
                     setCreating(true);
                   }}
@@ -294,6 +325,7 @@ export function AdminClient({
                           className="rounded-xl bg-[var(--panel)] px-3 py-2 text-sm font-medium"
                           onClick={() => {
                             setCreating(false);
+                            setDraft(null);
                             setBulkWeek(false);
                             setEditing(entry);
                           }}

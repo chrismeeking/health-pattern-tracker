@@ -3,10 +3,13 @@
 import { useMemo, useState } from "react";
 import { EMPLOYERS, WORK_MODES, SOURCES, type Employer, type WorkMode, type Source } from "@/lib/employers";
 import type { ScheduleEntry } from "@/lib/schedule/schema";
+import type { SuggestedEntry } from "@/lib/schedule/suggestions";
 import { formatTimeDisplay } from "@/lib/date";
 
 type Props = {
   initial?: ScheduleEntry | null;
+  /** Prefill a new entry (e.g. from a suggestion) without an existing id. */
+  draft?: SuggestedEntry | null;
   defaultDate: string;
   onSaved: () => void;
   onCancel: () => void;
@@ -28,37 +31,57 @@ type FormState = {
   manual_override: boolean;
 };
 
-function toForm(entry: ScheduleEntry | null | undefined, defaultDate: string): FormState {
-  if (!entry) {
+function toForm(
+  entry: ScheduleEntry | null | undefined,
+  draft: SuggestedEntry | null | undefined,
+  defaultDate: string,
+): FormState {
+  if (entry) {
     return {
-      date: defaultDate,
-      employer: "Post Office",
-      work_mode: "WFH",
-      location: "",
-      start_time: "09:00",
-      end_time: "17:00",
-      expected_home_time: "17:30",
-      household_note: "",
+      id: entry.id,
+      date: entry.date,
+      employer: entry.employer,
+      work_mode: entry.work_mode as WorkMode,
+      location: entry.location ?? "",
+      start_time: formatTimeDisplay(entry.start_time) ?? "",
+      end_time: formatTimeDisplay(entry.end_time) ?? "",
+      expected_home_time: formatTimeDisplay(entry.expected_home_time) ?? "",
+      household_note: entry.household_note ?? "",
+      source: (entry.source as Source) || "manual",
+      source_reference: entry.source_reference ?? "",
+      is_all_day: entry.is_all_day,
+      manual_override: entry.manual_override,
+    };
+  }
+  if (draft) {
+    return {
+      date: draft.date || defaultDate,
+      employer: draft.employer,
+      work_mode: draft.work_mode as WorkMode,
+      location: draft.location ?? "",
+      start_time: formatTimeDisplay(draft.start_time) ?? "",
+      end_time: formatTimeDisplay(draft.end_time) ?? "",
+      expected_home_time: formatTimeDisplay(draft.expected_home_time) ?? "",
+      household_note: draft.household_note ?? "",
       source: "manual",
       source_reference: "",
-      is_all_day: false,
+      is_all_day: draft.is_all_day,
       manual_override: true,
     };
   }
   return {
-    id: entry.id,
-    date: entry.date,
-    employer: entry.employer,
-    work_mode: entry.work_mode as WorkMode,
-    location: entry.location ?? "",
-    start_time: formatTimeDisplay(entry.start_time) ?? "",
-    end_time: formatTimeDisplay(entry.end_time) ?? "",
-    expected_home_time: formatTimeDisplay(entry.expected_home_time) ?? "",
-    household_note: entry.household_note ?? "",
-    source: (entry.source as Source) || "manual",
-    source_reference: entry.source_reference ?? "",
-    is_all_day: entry.is_all_day,
-    manual_override: entry.manual_override,
+    date: defaultDate,
+    employer: "Post Office",
+    work_mode: "WFH",
+    location: "",
+    start_time: "09:00",
+    end_time: "17:00",
+    expected_home_time: "17:30",
+    household_note: "",
+    source: "manual",
+    source_reference: "",
+    is_all_day: false,
+    manual_override: true,
   };
 }
 
@@ -67,8 +90,16 @@ const fieldClass =
 
 const labelClass = "mb-1.5 block text-sm font-semibold text-[var(--muted)]";
 
-export function ScheduleForm({ initial, defaultDate, onSaved, onCancel }: Props) {
-  const [form, setForm] = useState<FormState>(() => toForm(initial, defaultDate));
+export function ScheduleForm({
+  initial,
+  draft = null,
+  defaultDate,
+  onSaved,
+  onCancel,
+}: Props) {
+  const [form, setForm] = useState<FormState>(() =>
+    toForm(initial, draft, defaultDate),
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
