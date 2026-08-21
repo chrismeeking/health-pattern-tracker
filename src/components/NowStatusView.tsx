@@ -74,7 +74,7 @@ export function NowStatusView({ status }: Props) {
         <div
           className={
             evening
-              ? "mt-5 rounded-2xl bg-[var(--bg)]/80 px-4 py-4 sm:mt-7 sm:px-6 sm:py-5"
+              ? "mt-5 rounded-2xl bg-[var(--panel)]/90 px-4 py-4 sm:mt-7 sm:px-6 sm:py-5"
               : "mt-6 border-t border-black/10 pt-4 sm:mt-8 sm:pt-6"
           }
         >
