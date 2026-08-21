@@ -5,6 +5,13 @@ import { TodaySummary } from "@/components/TodaySummary";
 import { WeekView } from "@/components/WeekView";
 import { WeekNavigation } from "@/components/WeekNavigation";
 import { NowStatusView } from "@/components/NowStatusView";
+import { ScheduleChangeOverlay } from "@/components/ScheduleChangeOverlay";
+import {
+  NotifyMuteControl,
+  isNotifyMuted,
+  playNotifyPing,
+  unlockNotifyAudio,
+} from "@/components/NotifyMuteControl";
 import { InactivityReset } from "@/components/InactivityReset";
 import {
   shiftWeek,
@@ -16,6 +23,14 @@ import {
   deriveNowStatus,
   tomorrowIsoDate,
 } from "@/lib/schedule/now-status";
+import {
+  detectScheduleChanges,
+  snapshotMap,
+  summariseScheduleChanges,
+  type MaterialSnapshot,
+  type EntryChange,
+  type ScheduleNotification,
+} from "@/lib/schedule/change-detect";
 import type { ScheduleEntry } from "@/lib/schedule/schema";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import { format, parseISO } from "date-fns";
@@ -33,6 +48,8 @@ type BoardView = "week" | "now";
 const WEEK_MS = 15_000;
 const NOW_MS = 10_000;
 const PAUSE_MS = 60_000;
+const NOTIFY_MS = 9_000;
+const BATCH_MS = 2_500;
 
 async function fetchWeek(monday: string): Promise<ScheduleEntry[]> {
   const res = await fetch(`/api/schedule?week=${monday}`, {
@@ -72,11 +89,86 @@ export function DashboardClient({
   const [boardView, setBoardView] = useState<BoardView>("week");
   const [rotationPaused, setRotationPaused] = useState(false);
   const [nowTick, setNowTick] = useState(0);
+  const [notification, setNotification] = useState<ScheduleNotification | null>(
+    null,
+  );
+  const [muted, setMuted] = useState(() =>
+    typeof window === "undefined" ? false : isNotifyMuted(),
+  );
   const [, startTransition] = useTransition();
+
   const pauseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const notifyHideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const batchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingChanges = useRef<EntryChange[]>([]);
+  const watchSnapshot = useRef<Map<string, MaterialSnapshot>>(new Map());
+  const baselineReady = useRef(false);
 
   const currentMonday = weekStartMonday(today);
   const isCurrentWeek = monday === currentMonday;
+
+  const showNotification = useCallback(
+    (payload: ScheduleNotification) => {
+      setNotification(payload);
+      playNotifyPing(muted || isNotifyMuted());
+      // Rotation already pauses while `notification` is set — do not touch
+      // rotationPaused so a user touch-pause is preserved after the overlay.
+      if (notifyHideTimer.current) clearTimeout(notifyHideTimer.current);
+      notifyHideTimer.current = setTimeout(() => {
+        setNotification(null);
+      }, NOTIFY_MS);
+    },
+    [muted],
+  );
+
+  const flushPendingChanges = useCallback(() => {
+    const batch = pendingChanges.current;
+    pendingChanges.current = [];
+    if (batch.length === 0) return;
+    const summary = summariseScheduleChanges(batch, {
+      today: todayDateString(),
+      thisMonday: weekStartMonday(todayDateString()),
+      nextMonday: shiftWeek(weekStartMonday(todayDateString()), 1),
+    });
+    if (summary) showNotification(summary);
+  }, [showNotification]);
+
+  const ingestWatchEntries = useCallback(
+    (incoming: ScheduleEntry[]) => {
+      const next = snapshotMap(incoming);
+      if (!baselineReady.current) {
+        watchSnapshot.current = next;
+        baselineReady.current = true;
+        return;
+      }
+
+      const changes = detectScheduleChanges(watchSnapshot.current, next);
+      watchSnapshot.current = next;
+      if (changes.length === 0) return;
+
+      pendingChanges.current.push(...changes);
+      if (batchTimer.current) clearTimeout(batchTimer.current);
+      batchTimer.current = setTimeout(() => {
+        flushPendingChanges();
+      }, BATCH_MS);
+    },
+    [flushPendingChanges],
+  );
+
+  const refreshWatch = useCallback(async () => {
+    const thisMon = weekStartMonday(todayDateString());
+    const nextMon = shiftWeek(thisMon, 1);
+    try {
+      const [a, b] = await Promise.all([fetchWeek(thisMon), fetchWeek(nextMon)]);
+      const merged = [...a, ...b];
+      // Dedupe by id
+      const byId = new Map<string, ScheduleEntry>();
+      for (const e of merged) byId.set(e.id, e);
+      ingestWatchEntries([...byId.values()]);
+    } catch {
+      // ignore watch failures
+    }
+  }, [ingestWatchEntries]);
 
   const refresh = useCallback(async (weekMonday: string) => {
     try {
@@ -101,6 +193,11 @@ export function DashboardClient({
   }, []);
 
   useEffect(() => {
+    // Establish notification baseline for this + next week (no ping on load)
+    void refreshWatch();
+  }, [refreshWatch]);
+
+  useEffect(() => {
     const tick = () => {
       const t = todayDateString();
       setToday((prev) => (prev === t ? prev : t));
@@ -113,12 +210,13 @@ export function DashboardClient({
   useEffect(() => {
     const id = setInterval(() => {
       void refresh(monday);
+      void refreshWatch();
       if (weekStartMonday(todayDateString()) === monday) {
         void refreshTomorrow();
       }
     }, 30_000);
     return () => clearInterval(id);
-  }, [monday, refresh, refreshTomorrow]);
+  }, [monday, refresh, refreshTomorrow, refreshWatch]);
 
   useEffect(() => {
     void refreshTomorrow();
@@ -139,6 +237,7 @@ export function DashboardClient({
           () => {
             void refresh(monday);
             void refreshTomorrow();
+            void refreshWatch();
           },
         )
         .subscribe();
@@ -151,9 +250,10 @@ export function DashboardClient({
         void createClient().removeChannel(channel);
       }
     };
-  }, [demoMode, monday, refresh, refreshTomorrow]);
+  }, [demoMode, monday, refresh, refreshTomorrow, refreshWatch]);
 
   const pauseRotation = useCallback(() => {
+    unlockNotifyAudio();
     setRotationPaused(true);
     if (pauseTimer.current) clearTimeout(pauseTimer.current);
     pauseTimer.current = setTimeout(() => {
@@ -164,19 +264,21 @@ export function DashboardClient({
   useEffect(() => {
     return () => {
       if (pauseTimer.current) clearTimeout(pauseTimer.current);
+      if (notifyHideTimer.current) clearTimeout(notifyHideTimer.current);
+      if (batchTimer.current) clearTimeout(batchTimer.current);
     };
   }, []);
 
-  // Auto-rotate only on the current week, when not paused
+  // Auto-rotate only on the current week, when not paused and no overlay
   useEffect(() => {
-    if (!isCurrentWeek || rotationPaused) return;
+    if (!isCurrentWeek || rotationPaused || notification) return;
 
     const delay = boardView === "week" ? WEEK_MS : NOW_MS;
     const id = setTimeout(() => {
       setBoardView((v) => (v === "week" ? "now" : "week"));
     }, delay);
     return () => clearTimeout(id);
-  }, [boardView, isCurrentWeek, rotationPaused, nowTick]);
+  }, [boardView, isCurrentWeek, rotationPaused, nowTick, notification]);
 
   const todayEntries = useMemo(() => {
     const byDate = groupByDate(entries);
@@ -211,7 +313,7 @@ export function DashboardClient({
     void refresh(next);
   };
 
-  const showNow = isCurrentWeek && boardView === "now";
+  const showNow = isCurrentWeek && boardView === "now" && !notification;
 
   return (
     <div
@@ -229,6 +331,7 @@ export function DashboardClient({
             </span>
           )}
         </div>
+        <NotifyMuteControl onMuteChange={setMuted} />
         <WeekNavigation
           monday={monday}
           isCurrentWeek={isCurrentWeek}
@@ -247,9 +350,9 @@ export function DashboardClient({
       <div className="relative min-h-0 flex-1">
         <div
           className={`absolute inset-0 flex flex-col gap-2 transition-opacity duration-500 ease-out ${
-            showNow ? "pointer-events-none opacity-0" : "opacity-100"
+            showNow || notification ? "pointer-events-none opacity-0" : "opacity-100"
           }`}
-          aria-hidden={showNow}
+          aria-hidden={showNow || !!notification}
         >
           <TodaySummary
             entries={todayEntries}
@@ -260,12 +363,18 @@ export function DashboardClient({
 
         <div
           className={`absolute inset-0 transition-opacity duration-500 ease-out ${
-            showNow ? "opacity-100" : "pointer-events-none opacity-0"
+            showNow && !notification
+              ? "opacity-100"
+              : "pointer-events-none opacity-0"
           }`}
-          aria-hidden={!showNow}
+          aria-hidden={!showNow || !!notification}
         >
           <NowStatusView status={nowStatus} />
         </div>
+
+        {notification ? (
+          <ScheduleChangeOverlay notification={notification} />
+        ) : null}
       </div>
 
       <InactivityReset
