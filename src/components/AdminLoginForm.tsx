@@ -36,13 +36,13 @@ export function AdminLoginForm() {
   return (
     <form
       onSubmit={onSubmit}
-      className="mx-auto mt-16 w-full max-w-md rounded-3xl bg-white p-8 shadow-sm ring-1 ring-black/5"
+      className="mx-auto mt-6 w-full max-w-md rounded-3xl bg-white p-6 shadow-sm ring-1 ring-black/5 sm:mt-16 sm:p-8"
     >
       <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">
-        Homeboard
+        Homeboard Admin
       </p>
       <h1 className="mt-2 font-[family-name:var(--font-display)] text-3xl font-semibold text-[var(--ink)]">
-        Admin login
+        Sign in
       </h1>
       <p className="mt-2 text-[var(--muted)]">
         Enter the household admin password to manage the schedule.

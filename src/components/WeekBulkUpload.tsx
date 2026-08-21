@@ -370,18 +370,18 @@ export function WeekBulkUpload({ monday, onSaved, onCancel }: Props) {
         <p className="rounded-2xl bg-[#fde8e8] px-4 py-3 text-[#7a1224]">{error}</p>
       )}
 
-      <div className="flex flex-wrap gap-3">
+      <div className="admin-sticky-actions flex flex-col gap-2 sm:flex-row sm:flex-wrap">
         <button
           type="submit"
           disabled={saving}
-          className="touch-target rounded-2xl bg-[var(--accent)] px-6 py-3.5 text-lg font-semibold text-white disabled:opacity-60"
+          className="touch-target w-full rounded-2xl bg-[var(--accent)] px-6 py-3.5 text-lg font-semibold text-white disabled:opacity-60 sm:w-auto"
         >
           {saving ? "Uploading…" : "Upload week"}
         </button>
         <button
           type="button"
           onClick={onCancel}
-          className="touch-target rounded-2xl bg-white px-6 py-3.5 text-lg font-medium ring-1 ring-black/10"
+          className="touch-target w-full rounded-2xl bg-white px-6 py-3.5 text-lg font-medium ring-1 ring-black/10 sm:w-auto"
         >
           Cancel
         </button>

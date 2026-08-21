@@ -164,70 +164,70 @@ export function ScheduleForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div>
-          <label className={labelClass} htmlFor="date">
-            Date
-          </label>
-          <input
-            id="date"
-            type="date"
-            required
-            className={fieldClass}
-            value={form.date}
-            onChange={(e) => update("date", e.target.value)}
-          />
-        </div>
-        <div>
-          <label className={labelClass} htmlFor="employer">
-            Employer
-          </label>
-          <select
-            id="employer"
-            className={fieldClass}
-            value={form.employer}
-            onChange={(e) => update("employer", e.target.value as Employer)}
-          >
-            {employerOptions.map((e) => (
-              <option key={e} value={e}>
-                {e}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className={labelClass} htmlFor="work_mode">
-            Work mode
-          </label>
-          <select
-            id="work_mode"
-            className={fieldClass}
-            value={form.work_mode}
-            onChange={(e) => update("work_mode", e.target.value as WorkMode)}
-          >
-            {WORK_MODES.map((m) => (
-              <option key={m} value={m}>
-                {m}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className={labelClass} htmlFor="location">
-            Location
-          </label>
-          <input
-            id="location"
-            className={fieldClass}
-            placeholder="e.g. Birmingham"
-            value={form.location}
-            onChange={(e) => update("location", e.target.value)}
-          />
+      <div>
+        <label className={labelClass} htmlFor="date">
+          Date
+        </label>
+        <input
+          id="date"
+          type="date"
+          required
+          className={fieldClass}
+          value={form.date}
+          onChange={(e) => update("date", e.target.value)}
+        />
+      </div>
+
+      <div>
+        <p className={labelClass}>Employer</p>
+        <div className="chip-grid" role="group" aria-label="Employer">
+          {employerOptions.map((e) => (
+            <button
+              key={e}
+              type="button"
+              className="chip-option"
+              data-active={form.employer === e ? "true" : "false"}
+              onClick={() => update("employer", e as Employer)}
+            >
+              {e}
+            </button>
+          ))}
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-4">
-        <label className="flex min-h-12 items-center gap-3 rounded-2xl bg-white px-4 py-3 text-base ring-1 ring-black/10">
+      <div>
+        <p className={labelClass}>Work mode</p>
+        <div className="chip-grid" role="group" aria-label="Work mode">
+          {WORK_MODES.map((m) => (
+            <button
+              key={m}
+              type="button"
+              className="chip-option"
+              data-active={form.work_mode === m ? "true" : "false"}
+              onClick={() => update("work_mode", m)}
+            >
+              {m}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <label className={labelClass} htmlFor="location">
+          Location
+        </label>
+        <input
+          id="location"
+          className={fieldClass}
+          placeholder="e.g. Birmingham"
+          value={form.location}
+          onChange={(e) => update("location", e.target.value)}
+          autoComplete="off"
+        />
+      </div>
+
+      <div className="flex flex-wrap gap-3">
+        <label className="flex min-h-12 flex-1 items-center gap-3 rounded-2xl bg-white px-4 py-3 text-base ring-1 ring-black/10 sm:flex-none">
           <input
             type="checkbox"
             className="size-5 accent-[var(--accent)]"
@@ -236,7 +236,7 @@ export function ScheduleForm({
           />
           All day
         </label>
-        <label className="flex min-h-12 items-center gap-3 rounded-2xl bg-white px-4 py-3 text-base ring-1 ring-black/10">
+        <label className="flex min-h-12 flex-1 items-center gap-3 rounded-2xl bg-white px-4 py-3 text-base ring-1 ring-black/10 sm:flex-none">
           <input
             type="checkbox"
             className="size-5 accent-[var(--accent)]"
@@ -301,54 +301,59 @@ export function ScheduleForm({
         />
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div>
-          <label className={labelClass} htmlFor="source">
-            Source
-          </label>
-          <select
-            id="source"
-            className={fieldClass}
-            value={form.source}
-            onChange={(e) => update("source", e.target.value as Source)}
-          >
-            {SOURCES.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
+      <details className="rounded-2xl bg-white/70 p-3 ring-1 ring-black/5 open:pb-4">
+        <summary className="cursor-pointer text-sm font-semibold text-[var(--muted)]">
+          Advanced (source)
+        </summary>
+        <div className="mt-3 grid gap-4 sm:grid-cols-2">
+          <div>
+            <label className={labelClass} htmlFor="source">
+              Source
+            </label>
+            <select
+              id="source"
+              className={fieldClass}
+              value={form.source}
+              onChange={(e) => update("source", e.target.value as Source)}
+            >
+              {SOURCES.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className={labelClass} htmlFor="source_reference">
+              Source reference
+            </label>
+            <input
+              id="source_reference"
+              className={fieldClass}
+              placeholder="Stable id for upserts"
+              value={form.source_reference}
+              onChange={(e) => update("source_reference", e.target.value)}
+            />
+          </div>
         </div>
-        <div>
-          <label className={labelClass} htmlFor="source_reference">
-            Source reference
-          </label>
-          <input
-            id="source_reference"
-            className={fieldClass}
-            placeholder="Stable id for upserts"
-            value={form.source_reference}
-            onChange={(e) => update("source_reference", e.target.value)}
-          />
-        </div>
-      </div>
+      </details>
 
       {error && (
         <p className="rounded-2xl bg-[#fde8e8] px-4 py-3 text-[#7a1224]">{error}</p>
       )}
 
-      <div className="flex flex-wrap gap-3 pt-2">
+      <div className="admin-sticky-actions flex flex-col gap-2 sm:flex-row sm:flex-wrap">
         <button
           type="submit"
           disabled={saving}
-          className="touch-target rounded-2xl bg-[var(--accent)] px-6 py-3.5 text-lg font-semibold text-white shadow-sm active:scale-[0.98] disabled:opacity-60"
+          className="touch-target w-full rounded-2xl bg-[var(--accent)] px-6 py-3.5 text-lg font-semibold text-white shadow-sm active:scale-[0.98] disabled:opacity-60 sm:w-auto"
         >
           {saving ? "Saving…" : form.id ? "Update entry" : "Create entry"}
         </button>
         <button
           type="button"
           onClick={onCancel}
-          className="touch-target rounded-2xl bg-white px-6 py-3.5 text-lg font-medium text-[var(--ink)] ring-1 ring-black/10 active:scale-[0.98]"
+          className="touch-target w-full rounded-2xl bg-white px-6 py-3.5 text-lg font-medium text-[var(--ink)] ring-1 ring-black/10 active:scale-[0.98] sm:w-auto"
         >
           Cancel
         </button>

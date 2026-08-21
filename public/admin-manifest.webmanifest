@@ -1,8 +1,8 @@
 {
-  "name": "Homeboard",
+  "name": "Homeboard Admin",
   "short_name": "Homeboard",
-  "description": "Household work-status board",
-  "start_url": "/",
+  "description": "Manage the household work schedule",
+  "start_url": "/admin",
   "scope": "/",
   "display": "standalone",
   "background_color": "#e4ecef",

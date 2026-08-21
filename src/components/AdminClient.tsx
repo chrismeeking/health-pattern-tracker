@@ -114,13 +114,13 @@ export function AdminClient({
   const showForm = creating || editing || !!draft;
 
   return (
-    <div className="mx-auto flex min-h-full w-full max-w-[1400px] flex-col gap-6 px-5 py-5 sm:px-8">
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div>
+    <div className="mx-auto flex min-h-full w-full max-w-[1400px] flex-col gap-4 px-4 py-4 sm:gap-6 sm:px-8 sm:py-5">
+      <header className="flex flex-wrap items-end justify-between gap-3">
+        <div className="min-w-0">
           <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">
-            Manage
+            Homeboard Admin
           </p>
-          <h1 className="font-[family-name:var(--font-display)] text-4xl font-semibold text-[var(--ink)] sm:text-5xl">
+          <h1 className="font-[family-name:var(--font-display)] text-3xl font-semibold text-[var(--ink)] sm:text-5xl">
             Schedule
           </h1>
           {demoMode && (
@@ -129,73 +129,77 @@ export function AdminClient({
             </p>
           )}
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex w-full gap-2 sm:w-auto">
           <Link
             href="/"
-            className="touch-target rounded-2xl bg-white px-5 py-3 text-base font-medium ring-1 ring-black/10"
+            className="touch-target flex-1 rounded-2xl bg-white px-4 py-3 text-center text-base font-medium ring-1 ring-black/10 sm:flex-none sm:px-5"
           >
             Board
           </Link>
           <button
             type="button"
             onClick={logout}
-            className="touch-target rounded-2xl bg-white px-5 py-3 text-base font-medium ring-1 ring-black/10"
+            className="touch-target flex-1 rounded-2xl bg-white px-4 py-3 text-base font-medium ring-1 ring-black/10 sm:flex-none sm:px-5"
           >
             Log out
           </button>
         </div>
       </header>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          className="touch-target rounded-2xl bg-white px-4 py-3 ring-1 ring-black/10"
-          onClick={() => setMonday(shiftWeek(monday, -1))}
-        >
-          Previous
-        </button>
-        <button
-          type="button"
-          className="touch-target rounded-2xl bg-white px-4 py-3 ring-1 ring-black/10"
-          onClick={() => setMonday(weekStartMonday(todayDateString()))}
-        >
-          This week
-        </button>
-        <button
-          type="button"
-          className="touch-target rounded-2xl bg-white px-4 py-3 ring-1 ring-black/10"
-          onClick={() => setMonday(shiftWeek(monday, 1))}
-        >
-          Next
-        </button>
-        <p className="ml-2 text-lg font-medium text-[var(--ink)]">
+      <div className="admin-week-nav -mx-4 space-y-3 px-4 pb-3 sm:mx-0 sm:px-0">
+        <p className="text-center text-base font-semibold text-[var(--ink)] sm:text-left sm:text-lg">
           {formatWeekRangeLabel(monday)}
         </p>
-        <button
-          type="button"
-          className="touch-target ml-auto rounded-2xl bg-white px-5 py-3 text-base font-semibold ring-1 ring-black/10"
-          onClick={() => {
-            setEditing(null);
-            setDraft(null);
-            setCreating(false);
-            setBulkWeek(true);
-          }}
-        >
-          Upload week
-        </button>
-        <button
-          type="button"
-          className="touch-target rounded-2xl bg-[var(--accent)] px-5 py-3 text-base font-semibold text-white"
-          onClick={() => {
-            setEditing(null);
-            setDraft(null);
-            setBulkWeek(false);
-            setCreating(true);
-            setSelectedDate(today);
-          }}
-        >
-          New entry
-        </button>
+        <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:items-center">
+          <button
+            type="button"
+            className="touch-target rounded-2xl bg-white px-3 py-3 text-sm font-semibold ring-1 ring-black/10 sm:px-4 sm:text-base"
+            onClick={() => setMonday(shiftWeek(monday, -1))}
+          >
+            Prev
+          </button>
+          <button
+            type="button"
+            className="touch-target rounded-2xl bg-white px-3 py-3 text-sm font-semibold ring-1 ring-black/10 sm:px-4 sm:text-base"
+            onClick={() => setMonday(weekStartMonday(todayDateString()))}
+          >
+            Today
+          </button>
+          <button
+            type="button"
+            className="touch-target rounded-2xl bg-white px-3 py-3 text-sm font-semibold ring-1 ring-black/10 sm:px-4 sm:text-base"
+            onClick={() => setMonday(shiftWeek(monday, 1))}
+          >
+            Next
+          </button>
+        </div>
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+          <button
+            type="button"
+            className="touch-target rounded-2xl bg-white px-4 py-3 text-base font-semibold ring-1 ring-black/10"
+            onClick={() => {
+              setEditing(null);
+              setDraft(null);
+              setCreating(false);
+              setBulkWeek(true);
+            }}
+          >
+            Upload week
+          </button>
+          <button
+            type="button"
+            className="touch-target rounded-2xl bg-[var(--accent)] px-4 py-3 text-base font-semibold text-white"
+            onClick={() => {
+              setEditing(null);
+              setDraft(null);
+              setBulkWeek(false);
+              setCreating(true);
+              setSelectedDate(today);
+            }}
+          >
+            New entry
+          </button>
+        </div>
       </div>
 
       {message && (
@@ -270,7 +274,7 @@ export function AdminClient({
         </section>
       )}
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         {dates.map((date) => {
           const heading = formatDayHeading(date);
           const dayEntries = byDate[date] ?? [];

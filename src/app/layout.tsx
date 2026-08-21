@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Fraunces, Outfit } from "next/font/google";
+import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
 import "./globals.css";
 
 const display = Fraunces({
@@ -15,7 +16,10 @@ const sans = Outfit({
 });
 
 export const metadata: Metadata = {
-  title: "Homeboard",
+  title: {
+    default: "Homeboard",
+    template: "%s · Homeboard",
+  },
   description: "Household work-status board for Jenny",
   applicationName: "Homeboard",
   manifest: "/manifest.webmanifest",
@@ -25,8 +29,12 @@ export const metadata: Metadata = {
     title: "Homeboard",
   },
   icons: {
-    icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
-    apple: [{ url: "/icon.svg" }],
+    icon: [
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+      { url: "/icon.svg", type: "image/svg+xml" },
+    ],
+    apple: [{ url: "/icon-180.png", sizes: "180x180", type: "image/png" }],
   },
 };
 
@@ -34,7 +42,7 @@ export const viewport: Viewport = {
   themeColor: "#2a7a6e",
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
@@ -47,7 +55,10 @@ export default function RootLayout({
       lang="en-GB"
       className={`${display.variable} ${sans.variable} h-full antialiased`}
     >
-      <body className="min-h-full font-sans text-[var(--ink)]">{children}</body>
+      <body className="min-h-full font-sans text-[var(--ink)]">
+        {children}
+        <ServiceWorkerRegister />
+      </body>
     </html>
   );
 }
