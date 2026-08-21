@@ -2,6 +2,7 @@
 
 import { DayCard } from "@/components/DayCard";
 import { ScheduleBlock } from "@/components/ScheduleBlock";
+import { getBankHolidayNote } from "@/lib/bank-holidays";
 import { formatDayHeading, weekDatesFromMonday } from "@/lib/date";
 import { groupByDate } from "@/lib/schedule/format";
 import type { ScheduleEntry } from "@/lib/schedule/schema";
@@ -21,7 +22,8 @@ export function WeekView({ monday, today, entries }: Props) {
   const weekendEntries = weekend.flatMap((date) =>
     (byDate[date] ?? []).map((entry) => ({ date, entry })),
   );
-  const showWeekend = weekendEntries.length > 0;
+  const weekendHasHoliday = weekend.some((date) => getBankHolidayNote(date));
+  const showWeekend = weekendEntries.length > 0 || weekendHasHoliday;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2">
@@ -45,7 +47,8 @@ export function WeekView({ monday, today, entries }: Props) {
           <div className="flex flex-wrap gap-2">
             {weekend.map((date) => {
               const dayEntries = byDate[date] ?? [];
-              if (dayEntries.length === 0) return null;
+              const bankHoliday = getBankHolidayNote(date);
+              if (dayEntries.length === 0 && !bankHoliday) return null;
               const { weekday, dayMonth } = formatDayHeading(date);
               return (
                 <div
@@ -56,14 +59,25 @@ export function WeekView({ monday, today, entries }: Props) {
                       : "bg-[var(--panel)]"
                   }`}
                 >
-                  <p className="mb-1 text-xs font-bold uppercase text-[var(--ink)]">
+                  <p className="text-xs font-bold uppercase text-[var(--ink)]">
                     {weekday.slice(0, 3)}{" "}
                     <span className="font-medium text-[var(--muted)]">{dayMonth}</span>
                   </p>
+                  {bankHoliday ? (
+                    <p className="mb-1 truncate text-[10px] font-medium text-[var(--muted)]">
+                      {bankHoliday}
+                    </p>
+                  ) : (
+                    <div className="mb-1" />
+                  )}
                   <div className="flex flex-col gap-1">
-                    {dayEntries.map((entry) => (
-                      <ScheduleBlock key={entry.id} entry={entry} dense />
-                    ))}
+                    {dayEntries.length === 0 ? (
+                      <p className="text-[11px] text-[var(--muted)]">No plans</p>
+                    ) : (
+                      dayEntries.map((entry) => (
+                        <ScheduleBlock key={entry.id} entry={entry} dense />
+                      ))
+                    )}
                   </div>
                 </div>
               );
