@@ -16,6 +16,7 @@ import {
 } from "@/lib/date";
 import { groupByDate } from "@/lib/schedule/format";
 import type { ScheduleEntry } from "@/lib/schedule/schema";
+import { getBankHolidayNote } from "@/lib/bank-holidays";
 
 type Props = {
   initialMonday: string;
@@ -244,6 +245,7 @@ export function AdminClient({
           const heading = formatDayHeading(date);
           const dayEntries = byDate[date] ?? [];
           const isToday = date === today;
+          const bankHoliday = getBankHolidayNote(date);
           return (
             <section
               key={date}
@@ -259,6 +261,11 @@ export function AdminClient({
                   <h3 className="text-xl font-semibold text-[var(--ink)]">
                     {heading.dayMonth}
                   </h3>
+                  {bankHoliday ? (
+                    <p className="mt-0.5 text-xs font-medium text-[var(--muted)]">
+                      {bankHoliday}
+                    </p>
+                  ) : null}
                 </div>
                 <button
                   type="button"

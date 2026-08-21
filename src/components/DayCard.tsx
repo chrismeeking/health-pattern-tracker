@@ -1,6 +1,7 @@
 "use client";
 
 import { ScheduleBlock } from "@/components/ScheduleBlock";
+import { getBankHolidayNote } from "@/lib/bank-holidays";
 import { formatDayHeading } from "@/lib/date";
 import type { ScheduleEntry } from "@/lib/schedule/schema";
 
@@ -15,6 +16,7 @@ type Props = {
 export function DayCard({ date, entries, isToday, fill = false }: Props) {
   const { weekday, dayMonth } = formatDayHeading(date);
   const shortDay = weekday.slice(0, 3);
+  const bankHoliday = getBankHolidayNote(date);
 
   return (
     <section
@@ -37,6 +39,14 @@ export function DayCard({ date, entries, isToday, fill = false }: Props) {
           </h2>
           <p className="text-xs font-medium text-[var(--muted)]">{dayMonth}</p>
         </div>
+        {bankHoliday ? (
+          <p
+            className="mt-0.5 truncate text-[10px] font-medium leading-tight text-[var(--muted)]"
+            title={bankHoliday}
+          >
+            {bankHoliday}
+          </p>
+        ) : null}
       </header>
 
       <div className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto overscroll-contain">
