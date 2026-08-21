@@ -1,45 +1,33 @@
 {
-  "name": "health-pattern-tracker",
+  "name": "homeboard",
+  "version": "0.1.0",
   "private": true,
-  "version": "1.0.0",
-  "type": "module",
   "scripts": {
-    "dev": "concurrently -n web,api -c cyan,magenta \"npm run dev:web\" \"npm run dev:api\"",
-    "dev:web": "vite",
-    "dev:api": "tsx watch server/index.ts",
-    "build": "tsc -b && vite build && npm run build:api",
-    "build:meals": "node scripts/build-meal-database.mjs",
-    "build:staples": "node scripts/build-staples-database.mjs",
-    "build:api": "tsc -p tsconfig.server.json",
-    "preview": "vite preview",
-    "start": "node dist-server/server/index.js",
-    "start:local": "npm run build && tsx server/index.ts",
-    "start:api": "tsx server/index.ts"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.49.8",
-    "@zxing/browser": "^0.2.0",
-    "@zxing/library": "^0.22.0",
-    "cors": "^2.8.5",
-    "dotenv": "^16.5.0",
-    "express": "^5.1.0",
-    "react": "^19.1.0",
-    "react-dom": "^19.1.0",
-    "react-router-dom": "^7.6.2"
+    "@supabase/ssr": "^0.12.4",
+    "@supabase/supabase-js": "^2.112.3",
+    "date-fns": "^4.4.0",
+    "date-fns-tz": "^3.2.0",
+    "next": "16.3.2",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "^4.1.8",
-    "@types/cors": "^2.8.18",
-    "@types/express": "^5.0.2",
-    "@types/node": "^22.15.29",
-    "@types/react": "^19.1.6",
-    "@types/react-dom": "^19.1.5",
-    "@vitejs/plugin-react": "^4.5.1",
-    "concurrently": "^9.1.2",
-    "tailwindcss": "^4.1.8",
-    "tsx": "^4.19.4",
-    "typescript": "~5.8.3",
-    "vite": "^6.3.5",
-    "vite-plugin-pwa": "^1.0.0"
-  }
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.3.2",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  },
+  "description": "Household work-status board for NCR touchscreen"
 }

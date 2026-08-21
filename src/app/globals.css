@@ -1,0 +1,54 @@
+@import "tailwindcss";
+
+:root {
+  --ink: #1c2428;
+  --muted: #5c6b73;
+  --accent: #2a7a6e;
+  --accent-soft: #d8ebe7;
+  --panel: #eef3f5;
+  --background: #e4ecef;
+  --foreground: #1c2428;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-sans);
+  --font-display: var(--font-display);
+}
+
+body {
+  min-height: 100dvh;
+  color: var(--ink);
+  font-family: var(--font-sans), system-ui, sans-serif;
+  background:
+    radial-gradient(1200px 600px at 10% -10%, #d8ebe7 0%, transparent 55%),
+    radial-gradient(900px 500px at 100% 0%, #dce6ee 0%, transparent 50%),
+    linear-gradient(180deg, #e8f0f2 0%, #e4ecef 45%, #dde6ea 100%);
+  background-attachment: fixed;
+}
+
+.today-panel {
+  background: linear-gradient(145deg, #ffffff 0%, #f3f8f7 100%);
+  box-shadow: 0 12px 40px rgba(28, 36, 40, 0.08);
+  border: 1px solid rgba(42, 122, 110, 0.12);
+}
+
+.touch-target {
+  min-height: 48px;
+  min-width: 48px;
+}
+
+/* Prefer large, readable form controls on touchscreens */
+input[type="date"],
+input[type="time"],
+select {
+  min-height: 52px;
+}
+
+@media (min-width: 1280px) {
+  /* Comfortable 16:9 kiosk density */
+  body {
+    font-size: 17px;
+  }
+}
