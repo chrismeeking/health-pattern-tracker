@@ -47,6 +47,7 @@ export function NowStatusView({ status }: Props) {
   const theme = status.primaryEmployer
     ? getEmployerTheme(status.primaryEmployer)
     : null;
+  const evening = status.phase === "finished";
 
   return (
     <section className="now-view flex h-full min-h-0 flex-1 flex-col justify-center overflow-hidden rounded-[1.5rem] bg-white/90 px-6 py-5 shadow-sm ring-1 ring-black/5 sm:px-10 sm:py-8">
@@ -61,7 +62,7 @@ export function NowStatusView({ status }: Props) {
             text={line.text}
             emphasis={line.emphasis}
             color={
-              i === 0 && theme && status.phase !== "travelling_home"
+              i === 0 && theme && status.phase !== "travelling_home" && !evening
                 ? theme.accent
                 : undefined
             }
@@ -70,15 +71,34 @@ export function NowStatusView({ status }: Props) {
       </div>
 
       {status.next && status.next.length > 0 ? (
-        <div className="mt-6 border-t border-black/10 pt-4 sm:mt-8 sm:pt-6">
+        <div
+          className={
+            evening
+              ? "mt-5 rounded-2xl bg-[var(--bg)]/80 px-4 py-4 sm:mt-7 sm:px-6 sm:py-5"
+              : "mt-6 border-t border-black/10 pt-4 sm:mt-8 sm:pt-6"
+          }
+        >
           {status.next.map((line, i) => (
             <div key={`${line.label ?? ""}-${line.text}-${i}`} className="mb-1">
               {line.label ? (
-                <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--muted)] sm:text-sm">
+                <p
+                  className={
+                    evening
+                      ? "text-sm font-bold uppercase tracking-[0.22em] text-[var(--accent)] sm:text-base"
+                      : "text-xs font-bold uppercase tracking-[0.18em] text-[var(--muted)] sm:text-sm"
+                  }
+                >
                   {line.label}
                 </p>
               ) : null}
-              <Line text={line.text} emphasis={line.emphasis ?? "strong"} />
+              <Line
+                text={line.text}
+                emphasis={
+                  evening && i === 0
+                    ? "hero"
+                    : (line.emphasis ?? "strong")
+                }
+              />
             </div>
           ))}
         </div>

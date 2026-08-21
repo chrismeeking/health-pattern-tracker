@@ -101,33 +101,70 @@ function tomorrowDateString(today: string): string {
   return format(addDays(parseISO(`${today}T12:00:00`), 1), "yyyy-MM-dd");
 }
 
-function finishedWithTomorrow(
-  tomorrowEntries: ScheduleEntry[],
-): NowStatus {
-  const lines: NowStatusLine[] = [
-    { text: "Finished for today", emphasis: "hero" },
-  ];
+function tomorrowPlanLines(tomorrowEntries: ScheduleEntry[]): NowStatusLine[] {
   const next = sortEntries(tomorrowEntries);
   if (next.length === 0) {
-    return {
-      phase: "finished",
-      eyebrow: "Done",
-      lines,
-      next: [{ label: "Tomorrow", text: "Nothing scheduled", emphasis: "muted" }],
-    };
+    return [
+      { label: "Tomorrow", text: "Nothing scheduled", emphasis: "muted" },
+    ];
   }
+
   const first = next[0];
   const start = formatTimeDisplay(first.start_time);
-  const detail = [modeShort(first), start].filter(Boolean).join(" — ");
+  const lines: NowStatusLine[] = [
+    { label: "Tomorrow", text: first.employer.toUpperCase(), emphasis: "strong" },
+    { text: modeShort(first), emphasis: "strong" },
+  ];
+  if (start) {
+    lines.push({ text: `Starts ${start}`, emphasis: "muted" });
+  } else if (first.is_all_day) {
+    lines.push({ text: "All day", emphasis: "muted" });
+  }
+  if (next.length > 1) {
+    const extra = next.length - 1;
+    lines.push({
+      text: extra === 1 ? "+1 more tomorrow" : `+${extra} more tomorrow`,
+      emphasis: "muted",
+    });
+  }
+  return lines;
+}
+
+/** Evening / overnight NOW state — useful for planning tomorrow. */
+function finishedWithTomorrow(tomorrowEntries: ScheduleEntry[]): NowStatus {
   return {
     phase: "finished",
-    eyebrow: "Done",
-    lines,
-    next: [
-      { label: "Tomorrow", text: first.employer.toUpperCase(), emphasis: "strong" },
-      { text: detail, emphasis: "muted" },
-    ],
+    eyebrow: "Evening",
+    lines: [{ text: "Done for today", emphasis: "hero" }],
+    next: tomorrowPlanLines(tomorrowEntries),
   };
+}
+
+/**
+ * True while today's working day is still active (before first job, in progress,
+ * between jobs, or in the travel/free window before expected_home_time).
+ * False once the final work entry has ended and expected_home_time (if any) has passed.
+ */
+export function isWorkingDayActive(
+  todayEntries: ScheduleEntry[],
+  reference: Date = new Date(),
+): boolean {
+  const today = todayDateString(reference);
+  const now = londonNowMinutes(reference);
+  const work = sortEntries(
+    todayEntries.filter(
+      (e) =>
+        e.date === today &&
+        !(isOffDayEmployer(e.employer) || e.work_mode === "Off"),
+    ),
+  );
+  if (work.length === 0) return false;
+
+  const last = work[work.length - 1];
+  const { end: lastEnd } = entryBounds(last);
+  const lastHome = toMinutes(last.expected_home_time);
+  const dayEnd = lastHome != null && lastHome > lastEnd ? lastHome : lastEnd;
+  return now < dayEnd;
 }
 
 /**
@@ -294,6 +331,42 @@ export function deriveNowStatus(
           emphasis: "muted",
         },
       ],
+    };
+  }
+
+  // Past the last work block, but expected home / free time not yet reached
+  // (covers WFH and any case where travelling_home did not apply).
+  const last = work[work.length - 1];
+  const { end: lastEnd } = entryBounds(last);
+  const lastHome = toMinutes(last.expected_home_time);
+  if (
+    now >= lastEnd &&
+    lastHome != null &&
+    lastHome > lastEnd &&
+    now < lastHome
+  ) {
+    const free = freeOrHome(last);
+    return {
+      phase: "travelling_home",
+      eyebrow: "Now",
+      primaryEmployer: last.employer,
+      lines: [
+        {
+          text: isAwayWork(last) ? "Travelling home" : "Winding down",
+          emphasis: "hero",
+        },
+        {
+          text: isAwayWork(last)
+            ? last.location
+              ? `From ${last.location}`
+              : "On the way back"
+            : modeLong(last),
+          emphasis: "strong",
+        },
+      ],
+      next: free
+        ? [{ label: free.label, text: free.time, emphasis: "strong" }]
+        : undefined,
     };
   }
 

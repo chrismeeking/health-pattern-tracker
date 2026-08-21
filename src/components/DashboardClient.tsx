@@ -12,6 +12,7 @@ import {
   playNotifyPing,
   unlockNotifyAudio,
 } from "@/components/NotifyMuteControl";
+import { LondonClock } from "@/components/LondonClock";
 import { InactivityReset } from "@/components/InactivityReset";
 import {
   shiftWeek,
@@ -325,6 +326,7 @@ export function DashboardClient({
           <h1 className="font-[family-name:var(--font-display)] text-xl font-semibold tracking-tight text-[var(--ink)] sm:text-2xl">
             Homeboard
           </h1>
+          <LondonClock className="shrink-0" />
           {demoMode && (
             <span className="rounded-md bg-white/70 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-[var(--muted)] ring-1 ring-black/5">
               Demo
