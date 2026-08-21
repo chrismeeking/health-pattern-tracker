@@ -22,8 +22,10 @@ import {
 import { groupByDate, sortEntries } from "@/lib/schedule/format";
 import {
   deriveNowStatus,
+  isWorkingDayActive,
   tomorrowIsoDate,
 } from "@/lib/schedule/now-status";
+import { useScreenWakeLock } from "@/hooks/useScreenWakeLock";
 import {
   detectScheduleChanges,
   snapshotMap,
@@ -86,6 +88,9 @@ export function DashboardClient({
   const [today, setToday] = useState(initialToday);
   const [entries, setEntries] = useState(initialEntries);
   const [tomorrowEntries, setTomorrowEntries] = useState<ScheduleEntry[]>([]);
+  const [liveTodayEntries, setLiveTodayEntries] = useState<ScheduleEntry[]>(
+    () => initialEntries.filter((e) => e.date === initialToday),
+  );
   const [error, setError] = useState<string | null>(null);
   const [boardView, setBoardView] = useState<BoardView>("week");
   const [rotationPaused, setRotationPaused] = useState(false);
@@ -193,6 +198,16 @@ export function DashboardClient({
     }
   }, []);
 
+  const refreshLiveToday = useCallback(async () => {
+    const date = todayDateString();
+    try {
+      const next = await fetchDay(date);
+      startTransition(() => setLiveTodayEntries(next));
+    } catch {
+      // Non-fatal — wake lock / NOW keep last known day
+    }
+  }, []);
+
   useEffect(() => {
     // Establish notification baseline for this + next week (no ping on load)
     void refreshWatch();
@@ -212,16 +227,16 @@ export function DashboardClient({
     const id = setInterval(() => {
       void refresh(monday);
       void refreshWatch();
-      if (weekStartMonday(todayDateString()) === monday) {
-        void refreshTomorrow();
-      }
+      void refreshLiveToday();
+      void refreshTomorrow();
     }, 30_000);
     return () => clearInterval(id);
-  }, [monday, refresh, refreshTomorrow, refreshWatch]);
+  }, [monday, refresh, refreshLiveToday, refreshTomorrow, refreshWatch]);
 
   useEffect(() => {
+    void refreshLiveToday();
     void refreshTomorrow();
-  }, [today, refreshTomorrow]);
+  }, [today, refreshLiveToday, refreshTomorrow]);
 
   useEffect(() => {
     if (demoMode || !isSupabaseConfigured()) return;
@@ -237,6 +252,7 @@ export function DashboardClient({
           { event: "*", schema: "public", table: "schedule_entries" },
           () => {
             void refresh(monday);
+            void refreshLiveToday();
             void refreshTomorrow();
             void refreshWatch();
           },
@@ -251,16 +267,26 @@ export function DashboardClient({
         void createClient().removeChannel(channel);
       }
     };
-  }, [demoMode, monday, refresh, refreshTomorrow, refreshWatch]);
+  }, [demoMode, monday, refresh, refreshLiveToday, refreshTomorrow, refreshWatch]);
+
+  const workingDayActive = useMemo(
+    () => isWorkingDayActive(liveTodayEntries),
+    // nowTick re-evaluates as London time advances
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [liveTodayEntries, nowTick],
+  );
+  const { syncWakeLock } = useScreenWakeLock(workingDayActive);
 
   const pauseRotation = useCallback(() => {
     unlockNotifyAudio();
+    // After a touch (e.g. screen woke), re-check whether to hold wake lock
+    syncWakeLock();
     setRotationPaused(true);
     if (pauseTimer.current) clearTimeout(pauseTimer.current);
     pauseTimer.current = setTimeout(() => {
       setRotationPaused(false);
     }, PAUSE_MS);
-  }, []);
+  }, [syncWakeLock]);
 
   useEffect(() => {
     return () => {
@@ -282,15 +308,16 @@ export function DashboardClient({
   }, [boardView, isCurrentWeek, rotationPaused, nowTick, notification]);
 
   const todayEntries = useMemo(() => {
+    if (isCurrentWeek) return sortEntries(liveTodayEntries);
     const byDate = groupByDate(entries);
     return sortEntries(byDate[today] ?? []);
-  }, [entries, today]);
+  }, [entries, today, isCurrentWeek, liveTodayEntries]);
 
   const nowStatus = useMemo(
-    () => deriveNowStatus(todayEntries, tomorrowEntries),
+    () => deriveNowStatus(liveTodayEntries, tomorrowEntries),
     // nowTick forces recompute as London time advances
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [todayEntries, tomorrowEntries, nowTick],
+    [liveTodayEntries, tomorrowEntries, nowTick],
   );
 
   const goPrev = () => {
