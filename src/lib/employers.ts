@@ -2,6 +2,7 @@ export const EMPLOYERS = [
   "Post Office",
   "Wagamama",
   "CPM Tech",
+  "Alpha",
   "Off",
   "Annual Leave",
   "Personal / Family",
@@ -66,6 +67,13 @@ export const EMPLOYER_THEMES: Record<Employer, EmployerTheme> = {
     accent: "#1f5f9a",
     onAccent: "#ffffff",
     text: "#143d63",
+  },
+  Alpha: {
+    label: "Alpha",
+    bg: "#efe8df",
+    accent: "#8a5a2b",
+    onAccent: "#ffffff",
+    text: "#5a3a1c",
   },
   Off: {
     label: "Off",
