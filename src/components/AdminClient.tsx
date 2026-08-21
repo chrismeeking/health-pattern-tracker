@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ScheduleForm } from "@/components/ScheduleForm";
 import { ScheduleBlock } from "@/components/ScheduleBlock";
+import { WeekBulkUpload } from "@/components/WeekBulkUpload";
 import {
   formatDayHeading,
   formatWeekRangeLabel,
@@ -35,6 +36,7 @@ export function AdminClient({
   const [entries, setEntries] = useState(initialEntries);
   const [editing, setEditing] = useState<ScheduleEntry | null>(null);
   const [creating, setCreating] = useState(false);
+  const [bulkWeek, setBulkWeek] = useState(false);
   const [selectedDate, setSelectedDate] = useState(initialToday);
   const [message, setMessage] = useState<string | null>(null);
   const [, startTransition] = useTransition();
@@ -167,9 +169,21 @@ export function AdminClient({
         </p>
         <button
           type="button"
-          className="touch-target ml-auto rounded-2xl bg-[var(--accent)] px-5 py-3 text-base font-semibold text-white"
+          className="touch-target ml-auto rounded-2xl bg-white px-5 py-3 text-base font-semibold ring-1 ring-black/10"
           onClick={() => {
             setEditing(null);
+            setCreating(false);
+            setBulkWeek(true);
+          }}
+        >
+          Upload week
+        </button>
+        <button
+          type="button"
+          className="touch-target rounded-2xl bg-[var(--accent)] px-5 py-3 text-base font-semibold text-white"
+          onClick={() => {
+            setEditing(null);
+            setBulkWeek(false);
             setCreating(true);
             setSelectedDate(today);
           }}
@@ -182,6 +196,24 @@ export function AdminClient({
         <p className="rounded-2xl bg-white px-4 py-3 text-[var(--ink)] ring-1 ring-black/5">
           {message}
         </p>
+      )}
+
+      {bulkWeek && (
+        <section className="rounded-3xl bg-[var(--panel)] p-5 shadow-sm ring-1 ring-black/5 sm:p-6">
+          <h2 className="mb-4 text-2xl font-semibold text-[var(--ink)]">
+            Upload week
+          </h2>
+          <WeekBulkUpload
+            key={monday}
+            monday={monday}
+            onCancel={() => setBulkWeek(false)}
+            onSaved={async (count) => {
+              setBulkWeek(false);
+              setMessage(`Uploaded ${count} entr${count === 1 ? "y" : "ies"}`);
+              await refresh(monday);
+            }}
+          />
+        </section>
       )}
 
       {showForm && (
@@ -234,6 +266,7 @@ export function AdminClient({
                   onClick={() => {
                     setSelectedDate(date);
                     setEditing(null);
+                    setBulkWeek(false);
                     setCreating(true);
                   }}
                 >
@@ -254,6 +287,7 @@ export function AdminClient({
                           className="rounded-xl bg-[var(--panel)] px-3 py-2 text-sm font-medium"
                           onClick={() => {
                             setCreating(false);
+                            setBulkWeek(false);
                             setEditing(entry);
                           }}
                         >
