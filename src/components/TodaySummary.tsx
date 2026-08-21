@@ -39,7 +39,11 @@ function hoursLabel(entry: ScheduleEntry): string | null {
 function freeLabel(entry: ScheduleEntry): string | null {
   const t = formatTimeDisplay(entry.expected_home_time);
   if (!t) return null;
-  if (entry.work_mode === "WFH" || entry.work_mode === "Off" || isOffDayEmployer(entry.employer)) {
+  if (
+    entry.work_mode === "WFH" ||
+    entry.work_mode === "Off" ||
+    isOffDayEmployer(entry.employer)
+  ) {
     return `FREE ~${t}`;
   }
   return `HOME ~${t}`;
@@ -47,23 +51,23 @@ function freeLabel(entry: ScheduleEntry): string | null {
 
 function EntryLine({ entry }: { entry: ScheduleEntry }) {
   const theme = getEmployerTheme(entry.employer);
-  const parts = [
-    modeLabel(entry),
-    hoursLabel(entry),
-    freeLabel(entry),
-  ].filter(Boolean);
+  const parts = [modeLabel(entry), hoursLabel(entry), freeLabel(entry)].filter(
+    Boolean,
+  );
 
   return (
-    <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-      <EmployerBadge employer={entry.employer} size="md" />
+    <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1">
+      <EmployerBadge employer={entry.employer} size="lg" />
       <p
-        className="min-w-0 text-base font-semibold tracking-tight sm:text-lg"
+        className="min-w-0 text-lg font-semibold tracking-tight sm:text-xl"
         style={{ color: theme.text }}
       >
         {parts.join("  ·  ")}
       </p>
       {entry.household_note ? (
-        <span className="text-sm text-[var(--muted)]">{entry.household_note}</span>
+        <span className="text-base text-[var(--muted)]">
+          {entry.household_note}
+        </span>
       ) : null}
     </div>
   );
@@ -71,22 +75,22 @@ function EntryLine({ entry }: { entry: ScheduleEntry }) {
 
 export function TodaySummary({ entries, todayShortLabel }: Props) {
   return (
-    <section className="today-strip shrink-0 overflow-hidden rounded-2xl px-3 py-2.5 sm:px-4 sm:py-3">
+    <section className="today-strip shrink-0 overflow-hidden rounded-2xl px-3.5 py-3 sm:px-5 sm:py-3.5">
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
-        <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--accent)]">
+        <p className="text-[0.8rem] font-bold uppercase tracking-[0.16em] text-[var(--accent)]">
           Today
         </p>
-        <p className="text-sm font-semibold uppercase tracking-wide text-[var(--ink)]">
+        <p className="text-base font-semibold uppercase tracking-wide text-[var(--ink)]">
           {todayShortLabel}
         </p>
       </div>
 
       {entries.length === 0 ? (
-        <p className="mt-1.5 text-lg font-semibold text-[var(--ink)]">
+        <p className="mt-2 text-xl font-semibold text-[var(--ink)]">
           Nothing scheduled
         </p>
       ) : (
-        <div className="mt-1.5 flex flex-col gap-1.5">
+        <div className="mt-2 flex flex-col gap-2">
           {entries.map((entry) => (
             <EntryLine key={entry.id} entry={entry} />
           ))}

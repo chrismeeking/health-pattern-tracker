@@ -20,7 +20,7 @@ export function DayCard({ date, entries, isToday, fill = false }: Props) {
 
   return (
     <section
-      className={`flex min-h-0 flex-col overflow-hidden rounded-2xl p-2 ${
+      className={`flex min-h-0 flex-col overflow-hidden rounded-2xl p-2.5 ${
         fill ? "h-full" : ""
       } ${
         isToday
@@ -28,20 +28,22 @@ export function DayCard({ date, entries, isToday, fill = false }: Props) {
           : "bg-white/85 shadow-sm ring-1 ring-black/5"
       }`}
     >
-      <header className="mb-1.5 shrink-0 border-b border-black/5 pb-1">
+      <header className="mb-2 shrink-0 border-b border-black/5 pb-1.5">
         <div className="flex items-baseline justify-between gap-1">
           <h2
-            className={`text-sm font-bold uppercase tracking-wide ${
+            className={`text-[1.05rem] font-bold uppercase tracking-wide ${
               isToday ? "text-[var(--accent)]" : "text-[var(--ink)]"
             }`}
           >
             {shortDay}
           </h2>
-          <p className="text-xs font-medium text-[var(--muted)]">{dayMonth}</p>
+          <p className="text-[0.85rem] font-semibold text-[var(--muted)]">
+            {dayMonth}
+          </p>
         </div>
         {bankHoliday ? (
           <p
-            className="mt-0.5 truncate text-[10px] font-medium leading-tight text-[var(--muted)]"
+            className="mt-0.5 truncate text-[11px] font-medium leading-tight text-[var(--muted)]"
             title={bankHoliday}
           >
             {bankHoliday}
@@ -49,9 +51,9 @@ export function DayCard({ date, entries, isToday, fill = false }: Props) {
         ) : null}
       </header>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto overscroll-contain">
+      <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden">
         {entries.length === 0 ? (
-          <p className="py-3 text-center text-xs text-[var(--muted)]">No plans</p>
+          <p className="py-4 text-center text-sm text-[var(--muted)]">No plans</p>
         ) : (
           entries.map((entry) => (
             <ScheduleBlock key={entry.id} entry={entry} dense />

@@ -46,40 +46,52 @@ export function ScheduleBlock({ entry, dense = false, compact = false }: Props) 
   if (dense) {
     return (
       <article
-        className="min-w-0 rounded-lg px-2 py-1.5"
+        className="min-w-0 flex-1 rounded-xl px-2.5 py-2.5"
         style={{
           backgroundColor: theme.bg,
-          borderLeft: `3px solid ${theme.accent}`,
+          borderLeft: `4px solid ${theme.accent}`,
         }}
       >
         <p
-          className="truncate text-[11px] font-bold uppercase tracking-wide"
+          className="truncate text-[15px] font-bold uppercase leading-tight tracking-wide"
           style={{ color: theme.accent }}
         >
           {entry.employer}
         </p>
         {mode && (
-          <p className="truncate text-xs font-medium leading-snug" style={{ color: theme.text }}>
+          <p
+            className="mt-0.5 truncate text-[13px] font-semibold leading-snug"
+            style={{ color: theme.text }}
+          >
             {mode}
           </p>
         )}
         {!entry.is_all_day && start && end && (
-          <p className="text-sm font-semibold leading-snug" style={{ color: theme.text }}>
+          <p
+            className="mt-1 text-[17px] font-bold leading-snug tracking-tight"
+            style={{ color: theme.text }}
+          >
             {start}–{end}
           </p>
         )}
         {entry.is_all_day && (
-          <p className="text-xs font-medium" style={{ color: theme.text }}>
+          <p className="mt-1 text-sm font-semibold" style={{ color: theme.text }}>
             All day
           </p>
         )}
         {free && (
-          <p className="truncate text-[11px] leading-snug opacity-90" style={{ color: theme.text }}>
+          <p
+            className="mt-0.5 truncate text-[13px] font-medium leading-snug opacity-90"
+            style={{ color: theme.text }}
+          >
             {free}
           </p>
         )}
         {entry.household_note && (
-          <p className="truncate text-[11px] opacity-80" style={{ color: theme.text }}>
+          <p
+            className="mt-0.5 truncate text-[12px] opacity-80"
+            style={{ color: theme.text }}
+          >
             {entry.household_note}
           </p>
         )}

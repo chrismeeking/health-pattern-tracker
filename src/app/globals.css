@@ -42,7 +42,11 @@ body {
   background: linear-gradient(145deg, #ffffff 0%, #f3f8f7 100%);
   box-shadow: 0 4px 16px rgba(28, 36, 40, 0.06);
   border: 1px solid rgba(42, 122, 110, 0.14);
-  max-height: 20vh;
+  max-height: 22vh;
+}
+
+.now-view {
+  background: linear-gradient(155deg, #ffffff 0%, #f4f8f7 55%, #eef5f3 100%);
 }
 
 .today-panel {
