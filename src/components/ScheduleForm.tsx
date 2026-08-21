@@ -110,6 +110,7 @@ export function ScheduleForm({ initial, defaultDate, onSaved, onCancel }: Props)
       const res = await fetch("/api/schedule", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
         body: JSON.stringify(payload),
       });
       const data = await res.json();

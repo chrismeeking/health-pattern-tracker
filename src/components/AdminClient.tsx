@@ -58,6 +58,7 @@ export function AdminClient({
     const res = await fetch("/api/schedule", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
       body: JSON.stringify({ id }),
     });
     if (!res.ok) {
@@ -73,6 +74,7 @@ export function AdminClient({
     const res = await fetch("/api/schedule", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
       body: JSON.stringify({
         date: entry.date,
         employer: entry.employer,

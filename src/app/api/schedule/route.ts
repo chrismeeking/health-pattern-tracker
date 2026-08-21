@@ -2,20 +2,11 @@ import { NextResponse } from "next/server";
 import { schedulePayloadSchema } from "@/lib/schedule/schema";
 import { upsertEntry, deleteEntry, listEntriesByRange, isDemoMode } from "@/lib/schedule/service";
 import { createServiceClient, hasServiceRole } from "@/lib/supabase/server";
-import { verifyApiKey } from "@/lib/auth";
-import { isAdminAuthenticated } from "@/lib/auth-server";
+import { authorizeScheduleMutation } from "@/lib/auth-server";
 import { weekDatesFromMonday, weekStartMonday } from "@/lib/date";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
-
-async function authorize(request: Request): Promise<boolean> {
-  const apiKey =
-    request.headers.get("x-api-key") ?? request.headers.get("authorization");
-  if (verifyApiKey(apiKey)) return true;
-  // Allow cookie-authenticated admin (browser admin UI)
-  return isAdminAuthenticated();
-}
 
 function getClient() {
   if (isDemoMode()) return null;
@@ -63,7 +54,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  if (!(await authorize(request))) {
+  if (!(await authorizeScheduleMutation(request))) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -102,7 +93,7 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  if (!(await authorize(request))) {
+  if (!(await authorizeScheduleMutation(request))) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
